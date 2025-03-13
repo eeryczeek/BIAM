@@ -4,15 +4,17 @@ import kotlin.random.Random
 
 data class TimeBenchmarkResult(
     val functionName: String,
-    val counter: Long,
-    val totalTime: Long,
+    val totalRuns: Long,
+    val avgTimePerIterationMillis: Double,
 )
 
 fun main() {
     val shuffleResult = timeBenchmark("shuffle") { shuffle(IntArray(1000) { it + 1 }) }
     val randomsResult = timeBenchmark("randomsWithoutRepetition") { randomsWithoutRepetition(1000) }
+    val sleepResult = timeBenchmark("sleep10ms") { Thread.sleep(10) }
     println(shuffleResult.toString())
     println(randomsResult.toString())
+    println(sleepResult.toString())
 }
 
 fun shuffle(array: IntArray): IntArray {
@@ -31,12 +33,17 @@ fun randomsWithoutRepetition(range: Int): Pair<Int, Int> {
 }
 
 fun timeBenchmark(functionName: String, block: () -> Any): TimeBenchmarkResult {
+    val benchmarkSeconds = 1 // Number of seconds to run the benchmark, adjustable
+    val minTimeMillis = benchmarkSeconds * 1_000L
     val start = System.currentTimeMillis()
-    var counter = 0L
+    var totalRuns = 0L
+
     do {
-        counter += 1L
+        totalRuns++
         block()
-    } while (System.currentTimeMillis() - start < 1000)
-    val end = System.currentTimeMillis()
-    return TimeBenchmarkResult(functionName, counter, end - start)
+    } while (System.currentTimeMillis() - start < minTimeMillis)
+
+    val elapsedMillis = System.currentTimeMillis() - start
+    val avgTimePerIterationMillis = elapsedMillis.toDouble() / totalRuns
+    return TimeBenchmarkResult(functionName, totalRuns, avgTimePerIterationMillis)
 }
