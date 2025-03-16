@@ -10,11 +10,9 @@ data class TimeBenchmarkResult(
 
 fun main() {
     val shuffleResult = timeBenchmark("shuffle") { shuffle(IntArray(1000) { it + 1 }) }
-    val randomsResult = timeBenchmark("randomsWithoutRepetition") { randomsWithoutRepetition(1000) }
-    val sleepResult = timeBenchmark("sleep10ms") { Thread.sleep(10) }
+    val randomsResult = timeBenchmark("randomsWithoutRepetition") { randomsWithoutRepetition(1_000) }
     println(shuffleResult.toString())
     println(randomsResult.toString())
-    println(sleepResult.toString())
 }
 
 fun shuffle(array: IntArray): IntArray {
@@ -33,17 +31,17 @@ fun randomsWithoutRepetition(range: Int): Pair<Int, Int> {
 }
 
 fun timeBenchmark(functionName: String, block: () -> Any): TimeBenchmarkResult {
-    val benchmarkSeconds = 1 // Number of seconds to run the benchmark, adjustable
-    val minTimeMillis = benchmarkSeconds * 1_000L
-    val start = System.currentTimeMillis()
+    val targetMillis = 2000L
     var totalRuns = 0L
+    var elapsedMillis: Long
+    val startTime = System.currentTimeMillis()
 
     do {
-        totalRuns++
         block()
-    } while (System.currentTimeMillis() - start < minTimeMillis)
+        totalRuns++
+        elapsedMillis = System.currentTimeMillis() - startTime
+    } while (elapsedMillis < targetMillis)
 
-    val elapsedMillis = System.currentTimeMillis() - start
     val avgTimePerIterationMillis = elapsedMillis.toDouble() / totalRuns
     return TimeBenchmarkResult(functionName, totalRuns, avgTimePerIterationMillis)
 }
