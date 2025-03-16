@@ -10,9 +10,20 @@ data class TimeBenchmarkResult(
 
 fun main() {
     val fileParser = FileParser()
-    val filePath = "data/tai12a.dat"
+    val filePath = "input/tai12a.dat"
     val solution = fileParser.parseFile(filePath)
-    println(solution.evaluate())
+    println("Initial solution cost: ${solution.cost}")
+    val finalSolution = localSearch(solution)
+    println("Final solution cost: ${finalSolution.cost}")
+}
+
+fun localSearch(solution: Solution): Solution {
+    val betterNeighbour = Neighbourhood.getNeighbour(solution)
+        .firstOrNull { it.cost < solution.cost }
+    return when {
+        betterNeighbour != null -> localSearch(betterNeighbour)
+        else -> solution
+    }
 }
 
 fun shuffle(array: IntArray): IntArray {

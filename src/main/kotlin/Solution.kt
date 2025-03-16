@@ -5,7 +5,12 @@ data class Solution(
     val n: Int,
     val A: Array<Array<Int>>,
     val B: Array<Array<Int>>,
-)
+    var cost: Int = 0
+) {
+    constructor(n: Int, A: Array<Array<Int>>, B: Array<Array<Int>>) : this(n, A, B, 0) {
+        this.cost = this.evaluate()
+    }
+}
 
 fun Solution.validate() {
     assert(A.size == n)
