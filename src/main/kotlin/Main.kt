@@ -9,10 +9,10 @@ data class TimeBenchmarkResult(
 )
 
 fun main() {
-    val shuffleResult = timeBenchmark("shuffle") { shuffle(IntArray(1000) { it + 1 }) }
-    val randomsResult = timeBenchmark("randomsWithoutRepetition") { randomsWithoutRepetition(1_000) }
-    println(shuffleResult.toString())
-    println(randomsResult.toString())
+    val fileParser = FileParser()
+    val filePath = "data/tai12a.dat"
+    val solution = fileParser.parseFile(filePath)
+    println(solution.evaluate())
 }
 
 fun shuffle(array: IntArray): IntArray {
