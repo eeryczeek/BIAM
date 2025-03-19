@@ -1,29 +1,37 @@
 package org.example
 
+object Problem {
+    var n: Int = 0
+    lateinit var distanceMatrix: Array<Array<Int>>
+    lateinit var flowMatrix: Array<Array<Int>>
 
-data class Solution(
-    val n: Int,
-    val A: Array<Array<Int>>,
-    val B: Array<Array<Int>>,
-    var cost: Int = 0
-) {
-    constructor(n: Int, A: Array<Array<Int>>, B: Array<Array<Int>>) : this(n, A, B, 0) {
-        this.cost = this.evaluate()
+    fun initialize(n: Int, distanceMatrix: Array<Array<Int>>, flowMatrix: Array<Array<Int>>) {
+        this.n = n
+        this.distanceMatrix = distanceMatrix
+        this.flowMatrix = flowMatrix
+        assert(distanceMatrix.size == n)
+        assert(flowMatrix.size == n)
+        assert(distanceMatrix.all { it.size == n })
+        assert(flowMatrix.all { it.size == n })
     }
 }
 
-fun Solution.validate() {
-    assert(A.size == n)
-    A.map { assert(it.size == n) }
-    assert(B.size == n)
-    B.map { assert(it.size == n) }
+
+data class Solution(
+    val permutation: IntArray = IntArray(Problem.n) { it },
+    var cost: Int = 0
+) {
+    init {
+        this.cost = this.evaluate()
+    }
+
+    override fun toString(): String = "cost: $cost, permutation: ${permutation.joinToString()}"
 }
 
 fun Solution.evaluate(): Int {
-    this.validate()
-    return A.indices.sumOf { i ->
-        A.indices.sumOf { j ->
-            A[i][j] * B[j][i]
+    return Problem.distanceMatrix.indices.sumOf { i ->
+        Problem.distanceMatrix.indices.sumOf { j ->
+            Problem.flowMatrix[permutation[i]][permutation[j]] * Problem.distanceMatrix[i][j]
         }
     }
 }

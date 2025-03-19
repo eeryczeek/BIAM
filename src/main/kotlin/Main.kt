@@ -10,23 +10,19 @@ data class TimeBenchmarkResult(
 
 fun main() {
     val fileParser = FileParser()
-    val filePath = "input/tai12a.dat"
-    val solution = fileParser.parseFile(filePath)
-    println("Initial solution cost: ${solution.cost}")
-    val initialSolution = greedyInitialSolution(solution.A, solution.B)
-    println("Greedy initial solution cost: ${initialSolution.cost}")
-    val finalSolution = localSearch(initialSolution)
-    println("Final solution cost: ${finalSolution.cost}")
-}
-
-fun localSearch(solution: Solution): Solution {
-    val betterNeighbour = Neighbourhood.getNeighbour(solution)
-        .firstOrNull { it.cost < solution.cost }
-    return when {
-        betterNeighbour != null -> localSearch(betterNeighbour)
-        else -> solution
+    val files = listOf("input/tai12a.dat")
+    files.forEach { filePath ->
+        fileParser.initializeProblem(filePath)
+        val modifier = SolutionModifier()
+        val solution = Solution(shuffle(IntArray(Problem.n) { it }))
+        val greedySolution = modifier.localSearchGreedy(solution)
+        val steepestSolution = modifier.localSearchSteepest(solution)
+        println("Initial solution: $solution")
+        println("Greedy solution: $greedySolution")
+        println("Steepest solution: $steepestSolution")
     }
 }
+
 
 fun shuffle(array: IntArray): IntArray {
     for (i in array.size - 1 downTo 1) {
@@ -56,25 +52,4 @@ fun timeBenchmark(functionName: String, block: () -> Any): TimeBenchmarkResult {
 
     val avgTimePerIterationMillis = elapsedMillis.toDouble() / totalRuns
     return TimeBenchmarkResult(functionName, totalRuns, avgTimePerIterationMillis)
-}
-
-fun greedyInitialSolution(A: Array<Array<Int>>, B: Array<Array<Int>>): Solution {
-    val n = A.size
-
-    val flowSums = A.mapIndexed { index, row -> index to row.sum() }.sortedByDescending { it.second }
-    val distanceSums = B.mapIndexed { index, row -> index to row.sum() }.sortedBy { it.second }
-
-    val permutation = IntArray(n)
-    for (i in 0 until n) {
-        permutation[flowSums[i].first] = distanceSums[i].first
-    }
-
-    val newA = Array(n) { i -> A[permutation[i]].copyOf() }
-    for (i in 0 until n) {
-        for (j in 0 until n) {
-            newA[i][j] = A[permutation[i]][permutation[j]]
-        }
-    }
-
-    return Solution(n, newA, B)
 }
