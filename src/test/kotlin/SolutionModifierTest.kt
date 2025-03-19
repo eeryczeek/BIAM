@@ -11,7 +11,7 @@ class SolutionModifierTest {
 
     @BeforeEach
     fun setUp() {
-        val filePath = "input/tai40a.dat"
+        val filePath = "input/tai12a.dat"
         FileParser().initializeProblem(filePath)
         modifier = SolutionModifier()
         benchmarking = Benchmarking()
