@@ -20,5 +20,4 @@ class SolutionGeneratorTest {
     fun greedyInitialSolution() {
         println(benchmarking.benchmarkGenerator("greedyInitialSolution") { generator.greedyInitialSolution() })
     }
-
 }

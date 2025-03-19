@@ -27,6 +27,6 @@ data class BenchmarkResult(
 ) {
     override fun toString(): String =
         "functionName: $functionName, totalRuns: $totalRuns, totalTimeMilliseconds: $totalTimeMilliseconds, averageCost: ${
-            solutions.map { it.cost }.average()
+        solutions.map { it.cost }.average()
         }"
 }
