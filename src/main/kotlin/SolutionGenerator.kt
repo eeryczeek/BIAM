@@ -3,26 +3,17 @@ package org.example
 class SolutionGenerator {
 
     fun greedyInitialSolution(): Solution {
-        val n = Problem.n
-        val permutation = IntArray(n)
+        val permutation = IntArray(Problem.n) { it }
 
-        val flowSums =
-            Problem.distanceMatrix.mapIndexed { index, row -> index to row.sum() }.sortedByDescending { it.second }
-        val distanceSums = Problem.flowMatrix.mapIndexed { index, row -> index to row.sum() }.sortedBy { it.second }
+        val flowSums = Problem.distanceMatrix.map { it.sum() }
+        val distanceSums = Problem.flowMatrix.map { it.sum() }
 
+        val sortedFlowIndices = flowSums.indices.sortedByDescending { flowSums[it] }
+        val sortedDistanceIndices = distanceSums.indices.sortedBy { distanceSums[it] }
 
-        for (i in 0 until n) {
-            permutation[flowSums[i].first] = distanceSums[i].first
+        for (i in 0 until Problem.n) {
+            permutation[sortedFlowIndices[i]] = sortedDistanceIndices[i]
         }
-
-        val newA = Array(n) { i -> Problem.distanceMatrix[permutation[i]].copyOf() }
-        for (i in 0 until n) {
-            for (j in 0 until n) {
-                newA[i][j] = Problem.distanceMatrix[permutation[i]][permutation[j]]
-            }
-        }
-
-        return Solution()
+        return Solution(permutation)
     }
-
 }

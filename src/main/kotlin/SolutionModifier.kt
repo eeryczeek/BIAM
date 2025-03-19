@@ -2,7 +2,7 @@ package org.example
 
 class SolutionModifier {
     fun localSearchGreedy(solution: Solution): Solution {
-        val betterNeighbour = Neighbourhood.getNeighbour(solution)
+        val betterNeighbour = solution.getNeighbourhood()
             .firstOrNull { it.cost < solution.cost }
         return when {
             betterNeighbour != null -> localSearchGreedy(betterNeighbour)
@@ -11,9 +11,9 @@ class SolutionModifier {
     }
 
     fun localSearchSteepest(solution: Solution): Solution {
-        val betterNeighbour = Neighbourhood.getNeighbour(solution).minBy { it.cost }
+        val bestNeighbour = solution.getNeighbourhood().minBy { it.cost }
         return when {
-            betterNeighbour.cost < solution.cost -> localSearchSteepest(betterNeighbour)
+            bestNeighbour.cost < solution.cost -> localSearchSteepest(bestNeighbour)
             else -> solution
         }
     }
