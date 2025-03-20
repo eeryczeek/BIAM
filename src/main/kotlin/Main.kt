@@ -4,8 +4,11 @@ import kotlin.random.Random
 
 fun main() {
     val fileParser = FileParser()
+    val optimalSolutionParser = OptimalSolutionParser()
     val files = listOf("input/tai12a.dat")
-    files.forEach { filePath ->
+    val optimalFiles = listOf("input/tai12a.sln")
+
+    files.forEachIndexed { index, filePath ->
         fileParser.initializeProblem(filePath)
         val generator = SolutionGenerator()
         val modifier = SolutionModifier()
@@ -13,10 +16,13 @@ fun main() {
         val greedyInitial = generator.greedyInitialSolution()
         val greedySolution = modifier.localSearchGreedy(solution)
         val steepestSolution = modifier.localSearchSteepest(solution)
+        val optimalSolution = optimalSolutionParser.applyOptimalPermutation(solution, optimalFiles[index])
+
         println("Initial solution: $solution")
         println("Greedy initial solution: $greedyInitial")
         println("LS greedy solution: $greedySolution")
         println("LS steepest solution: $steepestSolution")
+        println("Optimal solution: $optimalSolution")
     }
 }
 
