@@ -1,5 +1,6 @@
 plugins {
     kotlin("jvm") version "2.1.10"
+    id("org.jetbrains.kotlin.plugin.serialization") version "1.5.21"
     id("com.diffplug.spotless") version "6.0.0"
 }
 
@@ -12,6 +13,7 @@ repositories {
 
 dependencies {
     testImplementation(kotlin("test"))
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.1")
 }
 
 tasks.test {

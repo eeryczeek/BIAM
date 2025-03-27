@@ -11,7 +11,7 @@ class SolutionModifierTest {
 
     @BeforeEach
     fun setUp() {
-        val filePath = "input/tai12a.dat"
+        val filePath = "input/tai40a.dat"
         FileParser().initializeProblem(filePath)
         modifier = SolutionModifier()
         benchmarking = Benchmarking()
@@ -19,11 +19,11 @@ class SolutionModifierTest {
 
     @Test
     fun localSearchGreedy() {
-        println(benchmarking.benchmarkModifier("localSearchGreedy") { modifier.localSearchGreedy(Solution()) })
+        println(benchmarking.generalBenchmark("localSearchGreedy", 1) { modifier.localSearchGreedy(Solution()) })
     }
 
     @Test
     fun localSearchSteepest() {
-        println(benchmarking.benchmarkModifier("localSearchSteepest") { modifier.localSearchSteepest(Solution()) })
+        println(benchmarking.generalBenchmark("localSearchSteepest", 1) { modifier.localSearchSteepest(Solution()) })
     }
 }

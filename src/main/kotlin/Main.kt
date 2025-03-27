@@ -1,28 +1,49 @@
 package org.example
 
+import kotlin.math.max
 import kotlin.random.Random
 
 fun main() {
     val fileParser = FileParser()
-    val optimalSolutionParser = OptimalSolutionParser()
-    val files = listOf("input/tai12a.dat")
-    val optimalFiles = listOf("input/tai12a.sln")
+    val files = listOf("input/tai12a")
+    val generator = SolutionGenerator()
+    val modifier = SolutionModifier()
+    val benchmarking = Benchmarking()
 
-    files.forEachIndexed { index, filePath ->
-        fileParser.initializeProblem(filePath)
-        val generator = SolutionGenerator()
-        val modifier = SolutionModifier()
+    files.forEach { filePath ->
+        fileParser.initializeProblem("$filePath.dat")
+        fileParser.parseOptimalSolution("$filePath.sln")
         val solution = Solution()
-        val greedyInitial = generator.greedyInitialSolution()
-        val greedySolution = modifier.localSearchGreedy(solution)
-        val steepestSolution = modifier.localSearchSteepest(solution)
-        val optimalSolution = optimalSolutionParser.applyOptimalPermutation(solution, optimalFiles[index])
 
-        println("Initial solution: $solution")
-        println("Greedy initial solution: $greedyInitial")
-        println("LS greedy solution: $greedySolution")
-        println("LS steepest solution: $steepestSolution")
-        println("Optimal solution: $optimalSolution")
+        val greedyResults = benchmarking.generalBenchmark("greedy", 10) { modifier.localSearchGreedy(solution) }
+        val steepestResults = benchmarking.generalBenchmark("steepest", 10) { modifier.localSearchSteepest(solution) }
+        val randomWalkResults =
+            benchmarking.generalBenchmark("randomWalk", 10) {
+                modifier.randomWalk(
+                    solution,
+                    max(greedyResults.totalTimeMilliseconds, steepestResults.totalTimeMilliseconds) / 10
+                )
+            }
+        val randomSearchResults: BenchmarkResult =
+            benchmarking.generalBenchmark(
+                "randomSearch",
+                10
+            ) {
+                generator.randomSearch(
+                    max(
+                        greedyResults.totalTimeMilliseconds,
+                        steepestResults.totalTimeMilliseconds
+                    ) / 10
+                )
+            }
+        FileWriter().writeBenchmarkResultsToFile(
+            listOf(
+                greedyResults,
+                steepestResults,
+                randomWalkResults,
+                randomSearchResults
+            )
+        )
     }
 }
 
@@ -32,10 +53,4 @@ fun shuffle(array: IntArray): IntArray {
         array[i] = array[randomIndex].also { array[randomIndex] = array[i] }
     }
     return array
-}
-
-fun randomsWithoutRepetition(range: Int): Pair<Int, Int> {
-    val random1 = Random.nextInt(range)
-    val random2 = (random1 + Random.nextInt(1, range)) % range
-    return Pair(random1, random2)
 }

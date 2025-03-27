@@ -1,32 +1,32 @@
 package org.example
 
-class Benchmarking {
-    fun benchmarkGenerator(functionName: String, function: () -> Solution): BenchmarkResult {
-        val results = mutableSetOf<Solution>()
-        val startTime = System.currentTimeMillis()
-        results.add(function())
-        val endTime = System.currentTimeMillis()
-        return BenchmarkResult(functionName, 1, endTime - startTime, results)
-    }
+import kotlinx.serialization.Serializable
 
-    fun benchmarkModifier(functionName: String, function: (Solution) -> Solution): BenchmarkResult {
-        val results = mutableSetOf<Solution>()
-        val solution = SolutionGenerator().greedyInitialSolution()
+class Benchmarking {
+    fun generalBenchmark(
+        functionName: String,
+        repetitions: Long,
+        function: (Solution) -> List<BestSolution>
+    ): BenchmarkResult {
+        val results = mutableSetOf<List<BestSolution>>()
+        val solution = SolutionGenerator().heuristic()
         val startTime = System.currentTimeMillis()
-        for (i in 0 until 100) results.add(function(solution))
+        for (i in 0 until repetitions) results.add(function(solution))
         val endTime = System.currentTimeMillis()
-        return BenchmarkResult(functionName, 100, endTime - startTime, results)
+        return BenchmarkResult(functionName, repetitions, endTime - startTime, results)
     }
 }
 
+@Serializable
 data class BenchmarkResult(
     val functionName: String,
     val totalRuns: Long,
     val totalTimeMilliseconds: Long,
-    val solutions: Set<Solution>,
+    val bestSolutions: Set<List<BestSolution>>,
+    val optimalSolutions: Solution? = OptimalSolution.solution
 ) {
     override fun toString(): String =
         "functionName: $functionName, totalRuns: $totalRuns, totalTimeMilliseconds: $totalTimeMilliseconds, averageCost: ${
-        solutions.map { it.cost }.average()
+            bestSolutions.map { it.last().solution.cost }.average()
         }"
 }

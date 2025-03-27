@@ -15,3 +15,11 @@ object Problem {
         assert(flowMatrix.all { it.size == n })
     }
 }
+
+object OptimalSolution {
+    var solution: Solution? = null
+
+    fun initialize(solution: Solution) {
+        this.solution = solution
+    }
+}
