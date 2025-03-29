@@ -1,6 +1,8 @@
 package org.example
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 class Benchmarking {
     fun generalBenchmark(
@@ -18,16 +20,17 @@ class Benchmarking {
 }
 
 @Serializable
-data class BenchmarkResult(
+class BenchmarkResult(
     val functionName: String,
     val totalRuns: Long,
     val totalTimeMilliseconds: Long,
     val bestSolutions: Set<List<BestSolution>>,
     val instanceSize: Long = Problem.n.toLong(),
-    val optimalSolutions: Solution? = OptimalSolution.solution
+    val optimalSolution: Solution? = OptimalSolution.solution
 ) {
-    override fun toString(): String =
-        "functionName: $functionName, totalRuns: $totalRuns, totalTimeMilliseconds: $totalTimeMilliseconds, averageCost: ${
-            bestSolutions.map { it.last().solution.cost }.average()
-        }"
+
+    fun toJson(): String {
+        val json = Json { encodeDefaults = true }
+        return json.encodeToString(this)
+    }
 }

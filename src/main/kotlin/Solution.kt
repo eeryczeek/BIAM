@@ -35,7 +35,6 @@ class Solution(
         return deltaCost
     }
 
-
     fun getNeighbourhood(ordered: Boolean = false): Sequence<Solution> {
         val outerPermutation: IntArray
         val innerPermutation: IntArray
@@ -57,10 +56,7 @@ class Solution(
             }
         }
     }
-
-    override fun toString(): String = "cost: $cost, permutation: ${permutation.joinToString()}"
 }
-
 
 @Serializable
 data class BestSolution(

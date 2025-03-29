@@ -6,9 +6,9 @@ import kotlin.random.Random
 fun main() {
     val fileParser = FileParser()
     val files = listOf(
-        "input/tai10a",
+//        "input/tai10a",
         "input/tai20a",
-//        "input/tai30a",
+        "input/tai30a",
 //        "input/tai40a",
 //        "input/tai50a",
 //        "input/tai60a",
