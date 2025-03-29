@@ -1,4 +1,5 @@
 .gradle
+benchmark-results.txt
 build/
 input/
 !gradle/wrapper/gradle-wrapper.jar
