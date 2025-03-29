@@ -18,11 +18,11 @@ class SolutionGenerator {
     }
 
     fun randomSearch(maxTime: Long): List<BestSolution> {
-        var solution: Solution
+        var solution = Solution()
         var iterations = 0L
         val startTime = System.currentTimeMillis()
         val bestSolutions: MutableList<BestSolution> =
-            mutableListOf(BestSolution(Solution(), iterations, System.currentTimeMillis() - startTime))
+            mutableListOf(BestSolution(solution, iterations, System.currentTimeMillis() - startTime))
         while (System.currentTimeMillis() - startTime < maxTime) {
             iterations += 1
             solution = Solution()
