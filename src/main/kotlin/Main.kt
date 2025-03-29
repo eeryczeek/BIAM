@@ -6,14 +6,14 @@ import kotlin.random.Random
 fun main() {
     val fileParser = FileParser()
     val files = listOf(
-//        "input/tai10a",
-        "input/tai20a",
-        "input/tai30a",
-//        "input/tai40a",
-//        "input/tai50a",
-//        "input/tai60a",
-//        "input/tai80a",
-//        "input/tai100a"
+        "input/tai20b",
+        "input/tai30b",
+        "input/tai40b",
+        "input/tai50b",
+        "input/tai60b",
+        "input/tai80b",
+        "input/tai100b",
+        "input/tai150b",
     )
     val generator = SolutionGenerator()
     val modifier = SolutionModifier()
@@ -32,7 +32,7 @@ fun main() {
         val randomWalkResults =
             benchmarking.generalBenchmark("randomWalk", repetitions) {
                 modifier.randomWalk(
-                    max(greedyResults.totalTimeMilliseconds, steepestResults.totalTimeMilliseconds) / 10
+                    max(greedyResults.totalTimeMilliseconds, steepestResults.totalTimeMilliseconds) / repetitions
                 )
             }
         val randomSearchResults: BenchmarkResult =
@@ -47,6 +47,11 @@ fun main() {
                     ) / repetitions
                 )
             }
+        
+        val initialVsFinalGreedyResults =
+            benchmarking.initialVsFinalBenchmark("greedy", repetitions) { modifier.localSearchGreedy() }
+        val initialVsFinalSteepestResults =
+            benchmarking.initialVsFinalBenchmark("steepest", repetitions) { modifier.localSearchSteepest() }
         FileWriter().writeBenchmarkResultsToFile(
             listOf(
                 greedyResults,
