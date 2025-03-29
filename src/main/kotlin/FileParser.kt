@@ -15,13 +15,17 @@ class FileParser {
     }
 
     fun parseOptimalSolution(filePath: String) {
-        val lines = java.io.File(filePath).readLines().filter { it.isNotBlank() }
-        if (lines.size < 2) throw IllegalArgumentException("Invalid format in: $filePath")
-        val optimalPermutation = lines[1]
-            .trim().split("\\s+".toRegex())
-            .map { it.toInt() - 1 }
-            .toIntArray()
+        try {
+            val lines = java.io.File(filePath).readLines().filter { it.isNotBlank() }
+            if (lines.size < 2) throw IllegalArgumentException("Invalid format in: $filePath")
+            val optimalPermutation = lines[1]
+                .trim().split("\\s+".toRegex())
+                .map { it.toInt() - 1 }
+                .toIntArray()
 
-        OptimalSolution.initialize(Solution(optimalPermutation))
+            OptimalSolution.initialize(Solution(optimalPermutation))
+        } catch (e: Exception) {
+            OptimalSolution.initialize(null)
+        }
     }
 }

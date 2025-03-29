@@ -19,7 +19,7 @@ object Problem {
 object OptimalSolution {
     var solution: Solution? = null
 
-    fun initialize(solution: Solution) {
+    fun initialize(solution: Solution?) {
         this.solution = solution
     }
 }

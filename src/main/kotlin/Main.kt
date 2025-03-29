@@ -5,35 +5,46 @@ import kotlin.random.Random
 
 fun main() {
     val fileParser = FileParser()
-    val files = listOf("input/tai12a")
+    val files = listOf(
+        "input/tai10a",
+        "input/tai20a",
+//        "input/tai30a",
+//        "input/tai40a",
+//        "input/tai50a",
+//        "input/tai60a",
+//        "input/tai80a",
+//        "input/tai100a"
+    )
     val generator = SolutionGenerator()
     val modifier = SolutionModifier()
     val benchmarking = Benchmarking()
+    FileWriter().clear()
 
     files.forEach { filePath ->
         fileParser.initializeProblem("$filePath.dat")
         fileParser.parseOptimalSolution("$filePath.sln")
-        val solution = Solution()
+        val repetitions = 10L
 
-        val greedyResults = benchmarking.generalBenchmark("greedy", 10) { modifier.localSearchGreedy(solution) }
-        val steepestResults = benchmarking.generalBenchmark("steepest", 10) { modifier.localSearchSteepest(solution) }
+        val greedyResults =
+            benchmarking.generalBenchmark("greedy", repetitions) { modifier.localSearchGreedy() }
+        val steepestResults =
+            benchmarking.generalBenchmark("steepest", repetitions) { modifier.localSearchSteepest() }
         val randomWalkResults =
-            benchmarking.generalBenchmark("randomWalk", 10) {
+            benchmarking.generalBenchmark("randomWalk", repetitions) {
                 modifier.randomWalk(
-                    solution,
                     max(greedyResults.totalTimeMilliseconds, steepestResults.totalTimeMilliseconds) / 10
                 )
             }
         val randomSearchResults: BenchmarkResult =
             benchmarking.generalBenchmark(
                 "randomSearch",
-                10
+                repetitions
             ) {
                 generator.randomSearch(
                     max(
                         greedyResults.totalTimeMilliseconds,
                         steepestResults.totalTimeMilliseconds
-                    ) / 10
+                    ) / repetitions
                 )
             }
         FileWriter().writeBenchmarkResultsToFile(

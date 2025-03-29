@@ -9,7 +9,7 @@ class Benchmarking {
         function: (Solution) -> List<BestSolution>
     ): BenchmarkResult {
         val results = mutableSetOf<List<BestSolution>>()
-        val solution = SolutionGenerator().heuristic()
+        val solution = Solution()
         val startTime = System.currentTimeMillis()
         for (i in 0 until repetitions) results.add(function(solution))
         val endTime = System.currentTimeMillis()
@@ -23,6 +23,7 @@ data class BenchmarkResult(
     val totalRuns: Long,
     val totalTimeMilliseconds: Long,
     val bestSolutions: Set<List<BestSolution>>,
+    val instanceSize: Long = Problem.n.toLong(),
     val optimalSolutions: Solution? = OptimalSolution.solution
 ) {
     override fun toString(): String =

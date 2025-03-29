@@ -1,44 +1,42 @@
 package org.example
 
 class SolutionModifier {
-    fun localSearchGreedy(
-        solution: Solution,
-        iterations: Long = 0,
-        startTime: Long = System.currentTimeMillis()
-    ): List<BestSolution> {
-        val bestSolutions = mutableListOf(BestSolution(solution, iterations, System.currentTimeMillis() - startTime))
-        var currentSolution = solution
+    fun localSearchGreedy(): List<BestSolution> {
+        var solution = Solution()
+        var iterations = 0L
+        val startTime = System.currentTimeMillis()
+        val bestSolutions = mutableListOf(BestSolution(solution, 0, System.currentTimeMillis() - startTime))
         while (true) {
-            val betterNeighbour = currentSolution.getNeighbourhood()
-                .firstOrNull { it.cost < currentSolution.cost }
+            iterations += 1L
+            val betterNeighbour = solution.getNeighbourhood()
+                .firstOrNull { it.cost < solution.cost }
             if (betterNeighbour == null) {
                 return bestSolutions
             }
-            currentSolution = betterNeighbour
-            bestSolutions.add(BestSolution(currentSolution, iterations, System.currentTimeMillis() - startTime))
+            solution = betterNeighbour
+            bestSolutions.add(BestSolution(solution, iterations, System.currentTimeMillis() - startTime))
         }
     }
 
-    fun localSearchSteepest(
-        solution: Solution,
-        iterations: Long = 0,
-        startTime: Long = System.currentTimeMillis()
-    ): List<BestSolution> {
+    fun localSearchSteepest(): List<BestSolution> {
+        var solution = Solution()
+        var iterations = 0L
+        val startTime = System.currentTimeMillis()
         val bestSolutions = mutableListOf(BestSolution(solution, iterations, System.currentTimeMillis() - startTime))
-        var currentSolution = solution
         while (true) {
-            val betterNeighbour = currentSolution.getNeighbourhood()
-                .minBy { it.cost }.takeIf { it.cost < currentSolution.cost }
+            iterations += 1L
+            val betterNeighbour = solution.getNeighbourhood()
+                .minBy { it.cost }.takeIf { it.cost < solution.cost }
             if (betterNeighbour == null) {
                 return bestSolutions
             }
-            currentSolution = betterNeighbour
-            bestSolutions.add(BestSolution(currentSolution, iterations, System.currentTimeMillis() - startTime))
+            solution = betterNeighbour
+            bestSolutions.add(BestSolution(solution, iterations, System.currentTimeMillis() - startTime))
         }
     }
 
-    fun randomWalk(initialSolution: Solution, maxTime: Long): List<BestSolution> {
-        var solution: Solution = initialSolution
+    fun randomWalk(maxTime: Long): List<BestSolution> {
+        var solution = Solution()
         var iterations = 0L
         val startTime = System.currentTimeMillis()
         val bestSolutions: MutableList<BestSolution> =
