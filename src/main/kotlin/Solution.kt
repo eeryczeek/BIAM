@@ -1,10 +1,12 @@
 package org.example
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 @Serializable
 class Solution(
-    val permutation: IntArray = shuffle(IntArray(Problem.n) { it }),
+    private val permutation: IntArray = shuffle(IntArray(Problem.n) { it }),
     var cost: Long = 0L
 ) {
     init {
@@ -59,8 +61,15 @@ class Solution(
 }
 
 @Serializable
-data class BestSolution(
-    val solution: Solution,
+class BestSolution(
+    val cost: Long,
+    val time: Long,
     val iterations: Long,
-    val time: Long
-)
+    val evaluations: Long? = null
+) {
+
+    fun toJson(): String {
+        val json = Json { encodeDefaults = true }
+        return json.encodeToString(this)
+    }
+}

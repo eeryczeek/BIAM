@@ -1,9 +1,10 @@
 package org.example
 
-import kotlin.math.max
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlin.random.Random
 
-fun main() {
+fun main() = runBlocking {
     val fileParser = FileParser()
     val files = listOf(
         "input/tai20b",
@@ -15,52 +16,19 @@ fun main() {
         "input/tai100b",
         "input/tai150b",
     )
-    val generator = SolutionGenerator()
-    val modifier = SolutionModifier()
     val benchmarking = Benchmarking()
     FileWriter().clear()
 
-    files.forEach { filePath ->
-        fileParser.initializeProblem("$filePath.dat")
-        fileParser.parseOptimalSolution("$filePath.sln")
-        val repetitions = 10L
-
-        val greedyResults =
-            benchmarking.generalBenchmark("greedy", repetitions) { modifier.localSearchGreedy() }
-        val steepestResults =
-            benchmarking.generalBenchmark("steepest", repetitions) { modifier.localSearchSteepest() }
-        val randomWalkResults =
-            benchmarking.generalBenchmark("randomWalk", repetitions) {
-                modifier.randomWalk(
-                    max(greedyResults.totalTimeMilliseconds, steepestResults.totalTimeMilliseconds) / repetitions
-                )
-            }
-        val randomSearchResults: BenchmarkResult =
-            benchmarking.generalBenchmark(
-                "randomSearch",
-                repetitions
-            ) {
-                generator.randomSearch(
-                    max(
-                        greedyResults.totalTimeMilliseconds,
-                        steepestResults.totalTimeMilliseconds
-                    ) / repetitions
-                )
-            }
-        
-        val initialVsFinalGreedyResults =
-            benchmarking.initialVsFinalBenchmark("greedy", repetitions) { modifier.localSearchGreedy() }
-        val initialVsFinalSteepestResults =
-            benchmarking.initialVsFinalBenchmark("steepest", repetitions) { modifier.localSearchSteepest() }
-        FileWriter().writeBenchmarkResultsToFile(
-            listOf(
-                greedyResults,
-                steepestResults,
-                randomWalkResults,
-                randomSearchResults
-            )
-        )
+    val jobs = files.map { filePath ->
+        launch {
+            fileParser.initializeProblem("$filePath.dat")
+            fileParser.parseOptimalSolution("$filePath.sln")
+            benchmarking.performGeneralBenchmarks(10L)
+            benchmarking.performCostOverTimeBenchmark(40L)
+            benchmarking.performInitialVsFinalBenchmark(300L)
+        }
     }
+    jobs.forEach { it.join() }
 }
 
 fun shuffle(array: IntArray): IntArray {

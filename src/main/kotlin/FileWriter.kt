@@ -4,14 +4,24 @@ import java.io.File
 
 class FileWriter {
     fun clear() {
-        val file = File("benchmark-results.txt")
-        file.writeText("")
+        File("cost-time-results.txt").writeText("")
+        File("burnout-results.txt").writeText("")
+        File("initial-final.txt").writeText("")
     }
 
-    fun writeBenchmarkResultsToFile(benchmarkResults: List<BenchmarkResult>) {
-        val file = File("benchmark-results.txt")
-        benchmarkResults.forEach {
-            file.appendText("${it.toJson()}${System.lineSeparator()}")
-        }
+    fun writeCostTimeResultsToFile(benchmarkResults: BenchmarkResult) {
+        val file = File("cost-time-results.txt")
+        file.appendText("${benchmarkResults.toJson()}${System.lineSeparator()}")
+    }
+
+    fun writeCostTimeResultsToFile(costOverTimeBenchmarkResult: CostOverTimeBenchmarkResult) {
+        val file = File("burnout-results.txt")
+        file.appendText("${costOverTimeBenchmarkResult.toJson()}${System.lineSeparator()}")
+    }
+
+    fun writeInitialVsFinalResultsToFile(initialVsFinalResult: InitialVsFinalResult) {
+        val file = File("initial-final.txt")
+        file.appendText("${initialVsFinalResult.toJson()}${System.lineSeparator()}")
     }
 }
+
