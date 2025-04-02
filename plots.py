@@ -5,6 +5,29 @@ from collections import defaultdict
 from scipy.stats import pearsonr
 
 
+def load_results(file_path):
+    with open(file_path) as f:
+        lines = f.readlines()
+    return [json.loads(line) for line in lines]
+
+
+def group_data(benchmark_results):
+    """Groups benchmark results by instance size and function name."""
+    data_by_instance = defaultdict(lambda: defaultdict(list))
+    optimal_solutions = {}
+
+    for result in benchmark_results:
+        instance_size = result["instanceSize"]
+        function_name = result["functionName"]
+        runs = result["bestSolutions"]
+        data_by_instance[instance_size][function_name].append(runs)
+
+        if result["optimalSolution"] is not None:
+            optimal_solutions[instance_size] = result["optimalSolution"]["cost"]
+
+    return data_by_instance, optimal_solutions
+
+
 def plot_cost_over_time(
     data_by_instance, optimal_solutions, output_file="burnout_charts.png"
 ):
@@ -30,16 +53,12 @@ def plot_cost_over_time(
             max_time = 0
             all_costs = []
 
-            # Collect all time-cost pairs across runs
             for runs in runs_list:
                 for run in runs:
-                    time_cost_pairs = [
-                        (entry["time"], entry["solution"]["cost"]) for entry in run
-                    ]
+                    time_cost_pairs = [(entry["time"], entry["cost"]) for entry in run]
                     max_time = max(max_time, max(t[0] for t in time_cost_pairs))
                     all_costs.append(time_cost_pairs)
 
-            # Interpolate missing values
             interpolated_costs = []
             for costs in all_costs:
                 times, values = zip(*costs)
@@ -51,15 +70,12 @@ def plot_cost_over_time(
                     interpolated.append(last_value)
                 interpolated_costs.append(interpolated)
 
-            # Calculate averages, min, and max
             avg_costs = np.mean(interpolated_costs, axis=0)
             min_costs = np.min(interpolated_costs, axis=0)
             max_costs = np.max(interpolated_costs, axis=0)
 
-            # Plot average costs
             ax.plot(range(max_time + 1), avg_costs, label=function_name)
 
-            # Add shading for min and max costs
             ax.fill_between(
                 range(max_time + 1),
                 min_costs,
@@ -68,7 +84,6 @@ def plot_cost_over_time(
                 label=f"{function_name} (min-max)",
             )
 
-        # Plot the optimal solution as a red horizontal line if it exists
         if instance_size in optimal_solutions:
             optimal_cost = optimal_solutions[instance_size]
             ax.axhline(
@@ -78,111 +93,126 @@ def plot_cost_over_time(
                 label=f"Optimal Solution (Cost: {optimal_cost})",
             )
 
-        # Customize subplot
         ax.set_title(f"Instance Size: {instance_size}")
         ax.set_xlabel("Time (ms)")
         ax.set_ylabel("Cost")
         ax.legend()
         ax.grid()
 
-    # Remove unused subplots
     for idx in range(len(instance_sizes), len(axes)):
         fig.delaxes(axes[idx])
 
-    # Adjust layout and save to file
     plt.tight_layout()
     plt.savefig(output_file)
     plt.close()
     print(f"Burnout charts saved to {output_file}")
 
 
-def load_benchmark_results(file_path):
-    with open(file_path) as f:
-        lines = f.readlines()
-    return [json.loads(line) for line in lines]
+def plot_all_algorithms_average_performance(data_by_instance, optimal_solutions):
+    """Plots all algorithms' average fitness across all instance sizes on a single plot, including standard deviation as error bars."""
+    plt.figure(figsize=(10, 6))
+    plt.title("Comparison of Algorithms' Average Fitness Across All Instance Sizes")
 
+    aggregated_fitness = defaultdict(list)
+    aggregated_std = defaultdict(list)
 
-def group_data(benchmark_results):
-    data_by_instance = defaultdict(lambda: defaultdict(list))
-    optimal_solutions = {}
-
-    for result in benchmark_results:
-        instance_size = result["instanceSize"]
-        function_name = result["functionName"]
-        runs = result["bestSolutions"]
-        data_by_instance[instance_size][function_name].append(runs)
-
-        if result["optimalSolution"] is not None:
-            optimal_solutions[instance_size] = result["optimalSolution"]["cost"]
-
-    return data_by_instance, optimal_solutions
-
-
-def plot_initial_vs_final_quality(data_by_instance):
     for instance_size, functions_data in data_by_instance.items():
-        plt.figure(figsize=(8, 6))
-        plt.title(
-            f"Initial vs. Final Solution Quality (Instance Size: {instance_size})"
+        if instance_size not in optimal_solutions:
+            print(
+                f"Skipping instance size {instance_size} as no optimal solution is available."
+            )
+            continue
+
+        optimal_value = optimal_solutions[instance_size]
+
+        for function_name, runs_list in functions_data.items():
+            final_costs = [run["cost"] for runs in runs_list for run in runs]
+
+            fitness_values = [
+                (cost - optimal_value) / optimal_value for cost in final_costs
+            ]
+
+            aggregated_fitness[function_name].append(np.mean(fitness_values))
+            aggregated_std[function_name].append(np.std(fitness_values))
+
+    for function_name in aggregated_fitness.keys():
+        avg_fitness = aggregated_fitness[function_name]
+        std_fitness = aggregated_std[function_name]
+        plt.errorbar(
+            list(optimal_solutions.keys()),
+            avg_fitness,
+            yerr=std_fitness,
+            label=function_name,
+            capsize=5,
         )
 
-        all_initial_qualities = []
-        all_final_qualities = []
-
-        for function_name, runs_list in functions_data.items():
-            initial_qualities = []
-            final_qualities = []
-
-            for runs in runs_list:
-                for run in runs:
-                    initial_quality = run[0]["solution"]["cost"]  # Initial quality
-                    final_quality = run[-1]["solution"]["cost"]  # Final quality
-                    initial_qualities.append(initial_quality)
-                    final_qualities.append(final_quality)
-
-            plt.scatter(
-                initial_qualities, final_qualities, label=function_name, alpha=0.5, s=10
-            )
-
-            # Collect data for both axes
-            all_initial_qualities.extend(initial_qualities)
-            all_final_qualities.extend(final_qualities)
-
-            # Calculate and display correlation
-            if len(initial_qualities) > 1:
-                correlation, _ = pearsonr(initial_qualities, final_qualities)
-                print(
-                    f"Instance Size {instance_size}, Function {function_name}: Correlation = {correlation:.3f}"
-                )
-
-        # Find the smallest and largest values for both axes
-        min_val = min(min(all_initial_qualities), min(all_final_qualities))
-        max_val = max(max(all_initial_qualities), max(all_final_qualities))
-
-        # Set the same range for both axes
-        plt.xlim(min_val, max_val)
-        plt.ylim(min_val, max_val)
-
-        plt.xlabel("Initial Solution Quality")
-        plt.ylabel("Final Solution Quality")
-        plt.legend()
-        plt.grid()
-        plt.show()
+    # Customize the plot
+    plt.xlabel("Instance Size")
+    plt.ylabel("Average Fitness (with Std Dev)")
+    plt.legend()
+    plt.grid()
+    plt.savefig("average_performance.png")
 
 
-def print_average_best_scores(data_by_instance):
+def plot_all_algorithms_average_running_times(data_by_instance, optimal_solutions):
+    """Plots all algorithms' average running times across all instance sizes using a bar plot with a logarithmic scale."""
+    plt.figure(figsize=(12, 8))
+    plt.title(
+        "Comparison of Algorithms' Average Running Times Across All Instance Sizes"
+    )
+
+    aggregated_times = defaultdict(list)
+    aggregated_std = defaultdict(list)
+
     for instance_size, functions_data in data_by_instance.items():
-        print(f"Instance Size: {instance_size}")
+        if instance_size not in optimal_solutions:
+            print(
+                f"Skipping instance size {instance_size} as no optimal solution is available."
+            )
+            continue
+
         for function_name, runs_list in functions_data.items():
-            last_costs = [
-                run[-1]["solution"]["cost"] for runs in runs_list for run in runs
-            ]
-            average_best_scores = np.mean(last_costs)
-            print(f"  {function_name}: {average_best_scores}")
+            # Extract running times from the data
+            running_times = [entry["time"] for runs in runs_list for entry in runs]
+
+            aggregated_times[function_name].append(np.mean(running_times))
+            aggregated_std[function_name].append(np.std(running_times))
+
+    instance_sizes = list(optimal_solutions.keys())
+    bar_width = 0.2  # Width of each bar
+    x = np.arange(len(instance_sizes))  # X positions for instance sizes
+
+    for i, (function_name, avg_times) in enumerate(aggregated_times.items()):
+        std_times = aggregated_std[function_name]
+        plt.bar(
+            x + i * bar_width,
+            avg_times,
+            yerr=std_times,
+            width=bar_width,
+            label=function_name,
+            capsize=5,
+        )
+
+    # Customize x-axis ticks to align with grouped bars
+    plt.xticks(x + (len(aggregated_times) - 1) * bar_width / 2, instance_sizes)
+    plt.xlabel("Instance Size")
+    plt.ylabel("Average Running Time (ms)")
+    plt.yscale("log")  # Set y-axis to logarithmic scale
+    plt.legend()
+    plt.grid(
+        axis="y", which="both", linestyle="--", linewidth=0.5
+    )  # Grid for log scale
+    plt.tight_layout()
+    plt.savefig("average_running_times.png")
 
 
 if __name__ == "__main__":
-    benchmark_results = load_benchmark_results("benchmark-results.txt")
-    data_by_instance, optimal_solutions = group_data(benchmark_results)
-    plot_cost_over_time(data_by_instance, optimal_solutions)
-    plot_initial_vs_final_quality(data_by_instance)
-    print_average_best_scores(data_by_instance)
+    cost_time_results = load_results("cost-time-results.txt")
+    # burnout_results = load_results("burnout-results.txt")
+    cost_time_by_instance, cost_time_optimas = group_data(cost_time_results)
+    # burnout_by_instance, burnout_optimas = group_data(burnout_results)
+    plot_all_algorithms_average_performance(cost_time_by_instance, cost_time_optimas)
+    plot_all_algorithms_average_running_times(cost_time_by_instance, cost_time_optimas)
+    # plot_cost_over_time(burnout_by_instance, burnout_optimas)
+    # plot_initial_vs_final_quality(data_by_instance)
+    # print_average_best_scores(data_by_instance)
