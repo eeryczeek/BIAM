@@ -45,6 +45,14 @@ tailrec fun randomWalkHistory(
     evaluations: Long = 0
 ): List<BestSolution> {
     if (System.currentTimeMillis() - startTime >= maxTime) {
+        bestSolutions.add(
+            BestSolution(
+                bestSolutions.last().cost,
+                System.currentTimeMillis() - startTime,
+                iterations + 1,
+                evaluations + 1
+            )
+        )
         return bestSolutions
     }
     val newSolution = solution.getNeighbourhood().first()

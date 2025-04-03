@@ -29,7 +29,7 @@ class Benchmarking(
         "randomSearch" to ::randomSearchHistory
     )
 
-    fun performGeneralBenchmarks(
+    fun performCostTimeBenchmark(
         repetitions: Long
     ) {
         val functionToRuntime = mutableMapOf<String, Long>()
@@ -64,7 +64,7 @@ class Benchmarking(
         }
     }
 
-    fun performCostOverTimeBenchmark(
+    fun performBurnoutBenchmark(
         repetitions: Long
     ) {
         val functionToRuntime = mutableMapOf<String, Long>()
@@ -153,7 +153,8 @@ class Benchmarking(
 @Serializable
 class InitialVsFinalResult(
     val functionName: String,
-    val initialVsFinals: Set<InitialVsFinal>
+    val initialVsFinals: Set<InitialVsFinal>,
+    val instanceSize: Long = Problem.n.toLong(),
 ) {
     fun toJson(): String {
         val json = Json { encodeDefaults = true }
@@ -177,7 +178,6 @@ class CostOverTimeBenchmarkResult(
     val instanceSize: Long = Problem.n.toLong(),
     val optimalSolution: Solution? = OptimalSolution.solution
 ) {
-
     fun toJson(): String {
         val json = Json { encodeDefaults = true }
         return json.encodeToString(this)

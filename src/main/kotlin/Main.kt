@@ -23,9 +23,9 @@ fun main() = runBlocking {
         launch {
             fileParser.initializeProblem("$filePath.dat")
             fileParser.parseOptimalSolution("$filePath.sln")
-            benchmarking.performGeneralBenchmarks(10L)
-            benchmarking.performCostOverTimeBenchmark(40L)
-            benchmarking.performInitialVsFinalBenchmark(300L)
+            benchmarking.performCostTimeBenchmark(10L)
+            benchmarking.performBurnoutBenchmark(10L)
+            benchmarking.performInitialVsFinalBenchmark(200L)
         }
     }
     jobs.forEach { it.join() }
