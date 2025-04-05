@@ -15,23 +15,20 @@ tailrec fun localSearchGreedy(
     val bestSolution = neighbourhood.elementAtOrNull(index)
     return when {
         bestSolution == null -> BestSolution(
-            solution.cost,
+            solution,
             System.currentTimeMillis() - startTime,
             iterations,
             newEvaluations
         )
 
-        else -> {
-            localSearchGreedy(
-                bestSolution,
-                startTime,
-                iterations + 1,
-                newEvaluations
-            )
-        }
+        else -> localSearchGreedy(
+            bestSolution,
+            startTime,
+            iterations + 1,
+            newEvaluations
+        )
     }
 }
-
 
 fun localSearchGreedyHistory(
     solution: Solution,
@@ -52,7 +49,7 @@ fun localSearchGreedyHistory(
                 bestSolutions.apply {
                     add(
                         BestSolution(
-                            bestSolution.cost,
+                            bestSolution,
                             System.currentTimeMillis() - startTime,
                             iterations + 1,
                             newEvaluations

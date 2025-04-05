@@ -3,6 +3,7 @@ package org.example
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlin.random.Random
 
 @Serializable
 class Solution(
@@ -28,9 +29,9 @@ class Solution(
         for (k in 0 until n) {
             if (k != i && k != j) {
                 deltaCost += (Problem.flowMatrix[permutation[i]][permutation[k]] - Problem.flowMatrix[permutation[j]][permutation[k]]) *
-                        (Problem.distanceMatrix[j][k] - Problem.distanceMatrix[i][k])
+                    (Problem.distanceMatrix[j][k] - Problem.distanceMatrix[i][k])
                 deltaCost += (Problem.flowMatrix[permutation[k]][permutation[i]] - Problem.flowMatrix[permutation[k]][permutation[j]]) *
-                        (Problem.distanceMatrix[k][j] - Problem.distanceMatrix[k][i])
+                    (Problem.distanceMatrix[k][j] - Problem.distanceMatrix[k][i])
             }
         }
 
@@ -60,12 +61,20 @@ class Solution(
     }
 }
 
+fun shuffle(array: IntArray): IntArray {
+    for (i in array.size - 1 downTo 1) {
+        val randomIndex = Random.nextInt(i + 1)
+        array[i] = array[randomIndex].also { array[randomIndex] = array[i] }
+    }
+    return array
+}
+
 @Serializable
-class BestSolution(
-    val cost: Long,
-    val time: Long,
-    val iterations: Long,
-    val evaluations: Long? = null
+data class BestSolution(
+    val solution: Solution,
+    val time: Long = System.currentTimeMillis(),
+    val iterations: Long = 0,
+    val evaluations: Long = 0
 ) {
 
     fun toJson(): String {

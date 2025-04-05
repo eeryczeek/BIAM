@@ -13,15 +13,15 @@ tailrec fun randomWalk(
 ): BestSolution {
     if (System.currentTimeMillis() - startTime >= maxTime) {
         return BestSolution(
-            solution.cost,
+            solution,
             System.currentTimeMillis() - startTime,
             iterations,
             evaluations
         )
     }
     val newSolution = solution.getNeighbourhood().first()
-    val newBestSolution = if (bestSolution.cost < newSolution.cost) bestSolution else BestSolution(
-        newSolution.cost,
+    val newBestSolution = if (bestSolution.solution.cost < newSolution.cost) bestSolution else BestSolution(
+        newSolution,
         System.currentTimeMillis() - startTime,
         iterations + 1,
         evaluations + 1
@@ -47,7 +47,7 @@ tailrec fun randomWalkHistory(
     if (System.currentTimeMillis() - startTime >= maxTime) {
         bestSolutions.add(
             BestSolution(
-                bestSolutions.last().cost,
+                bestSolutions.last().solution,
                 System.currentTimeMillis() - startTime,
                 iterations + 1,
                 evaluations + 1
@@ -56,10 +56,10 @@ tailrec fun randomWalkHistory(
         return bestSolutions
     }
     val newSolution = solution.getNeighbourhood().first()
-    if (newSolution.cost < bestSolutions.last().cost) {
+    if (newSolution.cost < bestSolutions.last().solution.cost) {
         bestSolutions.add(
             BestSolution(
-                newSolution.cost,
+                newSolution,
                 System.currentTimeMillis() - startTime,
                 iterations + 1,
                 evaluations + 1
@@ -76,7 +76,7 @@ tailrec fun randomWalkHistory(
     )
 }
 //
-//fun randomWalk(maxTime: Long): List<BestSolution> {
+// fun randomWalk(maxTime: Long): List<BestSolution> {
 //    val startTime = System.currentTimeMillis()
 //
 //    fun walk(solution: Solution, iterations: Long, bestSolutions: List<BestSolution>): List<BestSolution> {
@@ -96,4 +96,4 @@ tailrec fun randomWalkHistory(
 //    val initialSolution = Solution()
 //    val initialBestSolutions = listOf(BestSolution(initialSolution.cost, 0, System.currentTimeMillis() - startTime))
 //    return walk(initialSolution, 0, initialBestSolutions)
-//}
+// }

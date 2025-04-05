@@ -13,15 +13,15 @@ tailrec fun randomSearch(
 ): BestSolution {
     if (System.currentTimeMillis() - startTime >= maxTime) {
         return BestSolution(
-            solution.cost,
+            solution,
             System.currentTimeMillis() - startTime,
             iterations,
             evaluations
         )
     }
     val newSolution = Solution()
-    val newBestSolution = if (bestSolution.cost < newSolution.cost) bestSolution else BestSolution(
-        newSolution.cost,
+    val newBestSolution = if (bestSolution.solution.cost < newSolution.cost) bestSolution else BestSolution(
+        newSolution,
         System.currentTimeMillis() - startTime,
         iterations + 1,
         evaluations + 1
@@ -47,7 +47,7 @@ tailrec fun randomSearchHistory(
     if (System.currentTimeMillis() - startTime >= maxTime) {
         bestSolutions.add(
             BestSolution(
-                bestSolutions.last().cost,
+                bestSolutions.last().solution,
                 System.currentTimeMillis() - startTime,
                 iterations + 1,
                 evaluations + 1,
@@ -57,10 +57,10 @@ tailrec fun randomSearchHistory(
         return bestSolutions
     }
     val newSolution = Solution()
-    if (newSolution.cost < bestSolutions.last().cost) {
+    if (newSolution.cost < bestSolutions.last().solution.cost) {
         bestSolutions.add(
             BestSolution(
-                newSolution.cost,
+                newSolution,
                 System.currentTimeMillis() - startTime,
                 iterations + 1,
                 evaluations + 1

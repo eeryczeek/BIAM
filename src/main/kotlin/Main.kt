@@ -1,10 +1,6 @@
 package org.example
 
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
-import kotlin.random.Random
-
-fun main() = runBlocking {
+fun main() {
     val fileParser = FileParser()
     val files = listOf(
         "input/tai20b",
@@ -19,22 +15,11 @@ fun main() = runBlocking {
     val benchmarking = Benchmarking()
     FileWriter().clear()
 
-    val jobs = files.map { filePath ->
-        launch {
-            fileParser.initializeProblem("$filePath.dat")
-            fileParser.parseOptimalSolution("$filePath.sln")
-            benchmarking.performCostTimeBenchmark(10L)
-            benchmarking.performBurnoutBenchmark(10L)
-            benchmarking.performInitialVsFinalBenchmark(200L)
-        }
+    files.forEach { filePath ->
+        fileParser.initializeProblem("$filePath.dat")
+        fileParser.parseOptimalSolution("$filePath.sln")
+//        benchmarking.performCostBenchmark(10L)
+        benchmarking.performBurnoutBenchmark(10L)
+//        benchmarking.performInitialVsFinalBenchmark(100L)
     }
-    jobs.forEach { it.join() }
-}
-
-fun shuffle(array: IntArray): IntArray {
-    for (i in array.size - 1 downTo 1) {
-        val randomIndex = Random.nextInt(i + 1)
-        array[i] = array[randomIndex].also { array[randomIndex] = array[i] }
-    }
-    return array
 }

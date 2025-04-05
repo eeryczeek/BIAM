@@ -2,7 +2,13 @@ import json
 import matplotlib.pyplot as plt
 import numpy as np
 from collections import defaultdict
-from scipy.stats import pearsonr
+
+FUNCTION_COLORS = {
+    "randomWalk": "blue",
+    "randomSearch": "green",
+    "localSearchGreedy": "orange",
+    "localSearchSteepest": "purple",
+}
 
 
 def load_results(file_path):
@@ -12,7 +18,6 @@ def load_results(file_path):
 
 
 def group_data(benchmark_results):
-    """Groups benchmark results by instance size and function name."""
     data_by_instance = defaultdict(lambda: defaultdict(list))
     optimal_solutions = {}
 
@@ -23,69 +28,53 @@ def group_data(benchmark_results):
         data_by_instance[instance_size][function_name].append(runs)
 
         if result["optimalSolution"] is not None:
-            optimal_solutions[instance_size] = result["optimalSolution"]["cost"]
+            optimal_solutions[instance_size] = result["optimalSolution"]
 
     return data_by_instance, optimal_solutions
 
 
-def plot_cost_over_time(
-    data_by_instance, optimal_solutions, output_file="burnout_charts.png"
-):
-    """Plots burnout charts for all instance sizes and saves them to a single file in a 2x4 layout."""
-    # Determine the number of instance sizes
-    instance_sizes = list(data_by_instance.keys())
-    num_instance_sizes = len(instance_sizes)
+def group_initial_final_data(benchmark_results):
+    data_by_instance = defaultdict(lambda: defaultdict(list))
+    for result in benchmark_results:
+        instance_size = result["instanceSize"]
+        function_name = result["functionName"]
+        runs = result["initialVsFinals"]
+        data_by_instance[instance_size][function_name].append(runs)
 
-    # Create a 2x4 layout (adjust rows/columns as needed)
-    rows = 2
-    cols = 4
-    fig, axes = plt.subplots(rows, cols, figsize=(20, 10))
+    return data_by_instance
+
+
+def plot_cost_over_measure(
+    data_by_instance, optimal_solutions, measure, output_file="burnout_chart"
+):
+    instance_sizes = list(data_by_instance.keys())
+    fig, axes = plt.subplots(2, 4, figsize=(24, 12))
     axes = axes.flatten()
 
     for idx, instance_size in enumerate(instance_sizes):
         if idx >= len(axes):
-            break  # Stop if there are more instance sizes than subplots
+            break
 
         ax = axes[idx]
         functions_data = data_by_instance[instance_size]
 
         for function_name, runs_list in functions_data.items():
-            max_time = 0
-            all_costs = []
-
+            label = True
             for runs in runs_list:
                 for run in runs:
-                    time_cost_pairs = [(entry["time"], entry["cost"]) for entry in run]
-                    max_time = max(max_time, max(t[0] for t in time_cost_pairs))
-                    all_costs.append(time_cost_pairs)
-
-            interpolated_costs = []
-            for costs in all_costs:
-                times, values = zip(*costs)
-                interpolated = []
-                last_value = values[0]
-                for t in range(max_time + 1):
-                    if t in times:
-                        last_value = values[times.index(t)]
-                    interpolated.append(last_value)
-                interpolated_costs.append(interpolated)
-
-            avg_costs = np.mean(interpolated_costs, axis=0)
-            min_costs = np.min(interpolated_costs, axis=0)
-            max_costs = np.max(interpolated_costs, axis=0)
-
-            ax.plot(range(max_time + 1), avg_costs, label=function_name)
-
-            ax.fill_between(
-                range(max_time + 1),
-                min_costs,
-                max_costs,
-                alpha=0.2,
-                label=f"{function_name} (min-max)",
-            )
+                    times = [int(entry[measure]) for entry in run]
+                    costs = [int(entry["solution"]["cost"]) for entry in run]
+                    ax.plot(
+                        times,
+                        costs,
+                        label=function_name if label else None,
+                        alpha=0.7,
+                        color=FUNCTION_COLORS.get(function_name, "black"),
+                    )
+                    label = False
 
         if instance_size in optimal_solutions:
-            optimal_cost = optimal_solutions[instance_size]
+            optimal_cost = optimal_solutions[instance_size]["cost"]
             ax.axhline(
                 y=optimal_cost,
                 color="red",
@@ -96,20 +85,110 @@ def plot_cost_over_time(
         ax.set_title(f"Instance Size: {instance_size}")
         ax.set_xlabel("Time (ms)")
         ax.set_ylabel("Cost")
-        ax.legend()
+        ax.legend(loc="upper right", fontsize="small")
         ax.grid()
 
-    for idx in range(len(instance_sizes), len(axes)):
-        fig.delaxes(axes[idx])
-
+    plt.subplots_adjust(hspace=0.4, wspace=0.3)
     plt.tight_layout()
-    plt.savefig(output_file)
+    plt.savefig(f"plots/{output_file}_{measure}.png")
     plt.close()
-    print(f"Burnout charts saved to {output_file}")
 
 
-def plot_all_algorithms_average_performance(data_by_instance, optimal_solutions):
-    """Plots all algorithms' average fitness across all instance sizes on a single plot, including standard deviation as error bars."""
+def plot_average_cost_over_measure(
+    data_by_instance,
+    optimal_solutions,
+    measure,
+    output_file="average_cost_over_measure",
+):
+    """
+    Plots the average and minimum of the last costs for each measurement value.
+    """
+    instance_sizes = list(data_by_instance.keys())
+    fig, axes = plt.subplots(2, 4, figsize=(24, 12))
+    axes = axes.flatten()
+
+    for idx, instance_size in enumerate(instance_sizes):
+        if idx >= len(axes):
+            break
+
+        ax = axes[idx]
+        functions_data = data_by_instance[instance_size]
+
+        for function_name, runs_list in functions_data.items():
+            all_measurements = []
+            all_costs = []
+
+            # Collect all measurements and costs
+            for runs in runs_list:
+                for run in runs:
+                    all_measurements.extend([int(entry[measure]) for entry in run])
+                    all_costs.extend([int(entry["solution"]["cost"]) for entry in run])
+
+            # Sort measurements
+            sorted_measurements = sorted(set(all_measurements))
+
+            # Compute the average and minimum of the last costs for each measurement
+            avg_last_costs = []
+            min_last_costs = []
+
+            for m in sorted_measurements:
+                # Filter runs up to the current measurement
+                last_costs = []
+                for runs in runs_list:
+                    for run in runs:
+                        filtered_costs = [
+                            int(entry["solution"]["cost"])
+                            for entry in run
+                            if int(entry[measure]) <= m
+                        ]
+                        if filtered_costs:
+                            last_costs.append(filtered_costs[-1])  # Take the last cost
+
+                # Compute the average and minimum of the last costs
+                if last_costs:
+                    avg_last_costs.append(sum(last_costs) / len(last_costs))
+                    min_last_costs.append(min(last_costs))
+
+            # Plot the results
+            ax.plot(
+                sorted_measurements,
+                avg_last_costs,
+                label=f"{function_name} (avg last)",
+                linestyle="-",
+                alpha=0.7,
+                color=FUNCTION_COLORS.get(function_name, "black"),
+            )
+            ax.plot(
+                sorted_measurements,
+                min_last_costs,
+                label=f"{function_name} (min last)",
+                linestyle="--",
+                alpha=0.7,
+                color=FUNCTION_COLORS.get(function_name, "black"),
+            )
+
+        if instance_size in optimal_solutions:
+            optimal_cost = optimal_solutions[instance_size]["cost"]
+            ax.axhline(
+                y=optimal_cost,
+                color="red",
+                linestyle="--",
+                label=f"Optimal Solution (Cost: {optimal_cost})",
+            )
+
+        ax.set_title(f"Instance Size: {instance_size}")
+        ax.set_xlabel(f"{measure.capitalize()} (ms)")
+        ax.set_ylabel("Cost")
+        ax.legend(loc="upper right", fontsize="small")
+        ax.grid()
+
+    plt.subplots_adjust(hspace=0.4, wspace=0.3)
+    plt.tight_layout()
+    plt.savefig(f"plots/{output_file}_{measure}.png")
+    plt.close()
+
+
+def plot_all_average_performance(data_by_instance, optimal_solutions):
     plt.figure(figsize=(10, 6))
     plt.title("Comparison of Algorithms' Average Fitness Across All Instance Sizes")
 
@@ -118,20 +197,17 @@ def plot_all_algorithms_average_performance(data_by_instance, optimal_solutions)
 
     for instance_size, functions_data in data_by_instance.items():
         if instance_size not in optimal_solutions:
-            print(
-                f"Skipping instance size {instance_size} as no optimal solution is available."
-            )
             continue
 
-        optimal_value = optimal_solutions[instance_size]
+        optimal_value = optimal_solutions[instance_size]["cost"]
 
         for function_name, runs_list in functions_data.items():
-            final_costs = [run["cost"] for runs in runs_list for run in runs]
-
+            final_costs = [
+                run["solution"]["cost"] for runs in runs_list for run in runs
+            ]
             fitness_values = [
                 (cost - optimal_value) / optimal_value for cost in final_costs
             ]
-
             aggregated_fitness[function_name].append(np.mean(fitness_values))
             aggregated_std[function_name].append(np.std(fitness_values))
 
@@ -146,73 +222,250 @@ def plot_all_algorithms_average_performance(data_by_instance, optimal_solutions)
             capsize=5,
         )
 
-    # Customize the plot
     plt.xlabel("Instance Size")
     plt.ylabel("Average Fitness (with Std Dev)")
     plt.legend()
     plt.grid()
-    plt.savefig("average_performance.png")
+    plt.savefig("plots/average_performance.png")
 
 
-def plot_all_algorithms_average_running_times(data_by_instance, optimal_solutions):
-    """Plots all algorithms' average running times across all instance sizes using a bar plot with a logarithmic scale."""
+def plot_all_average_measure(data_by_instance, measure, log_scale=False):
     plt.figure(figsize=(12, 8))
-    plt.title(
-        "Comparison of Algorithms' Average Running Times Across All Instance Sizes"
-    )
+    plt.title(f"Algorithms' average {measure} across all instance sizes")
 
     aggregated_times = defaultdict(list)
     aggregated_std = defaultdict(list)
 
     for instance_size, functions_data in data_by_instance.items():
-        if instance_size not in optimal_solutions:
-            print(
-                f"Skipping instance size {instance_size} as no optimal solution is available."
-            )
-            continue
-
         for function_name, runs_list in functions_data.items():
-            # Extract running times from the data
-            running_times = [entry["time"] for runs in runs_list for entry in runs]
-
+            if function_name in ["randomWalk", "randomSearch"] and measure == "time":
+                continue
+            running_times = [entry[measure] for runs in runs_list for entry in runs]
             aggregated_times[function_name].append(np.mean(running_times))
             aggregated_std[function_name].append(np.std(running_times))
 
-    instance_sizes = list(optimal_solutions.keys())
-    bar_width = 0.2  # Width of each bar
-    x = np.arange(len(instance_sizes))  # X positions for instance sizes
+    x = np.arange(len(data_by_instance.keys()))
 
-    for i, (function_name, avg_times) in enumerate(aggregated_times.items()):
+    for function_name, avg_times in aggregated_times.items():
         std_times = aggregated_std[function_name]
-        plt.bar(
-            x + i * bar_width,
+        plt.errorbar(
+            x,
             avg_times,
             yerr=std_times,
-            width=bar_width,
             label=function_name,
             capsize=5,
+            marker="o",
+            linestyle="-",
         )
 
-    # Customize x-axis ticks to align with grouped bars
-    plt.xticks(x + (len(aggregated_times) - 1) * bar_width / 2, instance_sizes)
+    plt.xticks(x, data_by_instance.keys())
     plt.xlabel("Instance Size")
-    plt.ylabel("Average Running Time (ms)")
-    plt.yscale("log")  # Set y-axis to logarithmic scale
+    if log_scale:
+        plt.yscale("log")
+        plt.ylabel(f"Average {measure} (ms, log scale)")
+    else:
+        plt.ylabel(f"Average {measure} (ms)")
     plt.legend()
-    plt.grid(
-        axis="y", which="both", linestyle="--", linewidth=0.5
-    )  # Grid for log scale
+    plt.grid(axis="y", which="both", linestyle="--", linewidth=0.5)
     plt.tight_layout()
-    plt.savefig("average_running_times.png")
+    plt.savefig(f"plots/average_{measure}{'_log' if log_scale else ''}.png")
+
+
+def plot_initial_vs_final_quality(
+    data_by_instance, equal_axis=False, output_file="initial_vs_final.png"
+):
+    instance_sizes = list(data_by_instance.keys())
+    fig, axes = plt.subplots(2, 4, figsize=(20, 10))
+    axes = axes.flatten()
+
+    for idx, instance_size in enumerate(instance_sizes):
+        if idx >= len(axes):
+            break
+
+        ax = axes[idx]
+        functions_data = data_by_instance[instance_size]
+
+        all_initial_costs = []
+        all_final_costs = []
+
+        for function_name, runs_list in functions_data.items():
+            initial_costs = []
+            final_costs = []
+
+            for runs in runs_list:
+                for run in runs:
+                    initial_costs.append(run["initialSolution"]["cost"])
+                    final_costs.append(run["finalSolution"]["cost"])
+
+            ax.scatter(initial_costs, final_costs, label=function_name, alpha=0.7)
+            all_initial_costs.extend(initial_costs)
+            all_final_costs.extend(final_costs)
+
+        if equal_axis:
+            max_cost = max(max(all_initial_costs), max(all_final_costs))
+            min_cost = min(min(all_initial_costs), min(all_final_costs))
+            ax.set_xlim(min_cost, max_cost)
+            ax.set_ylim(min_cost, max_cost)
+            ax.set_aspect("equal", adjustable="box")
+            ax.plot(
+                [min_cost, max_cost],
+                [min_cost, max_cost],
+                linestyle="--",
+                color="black",
+                label="y = x",
+            )
+
+        ax.set_title(f"Instance Size: {instance_size}")
+        ax.set_xlabel("Initial Solution Cost")
+        ax.set_ylabel("Final Solution Cost")
+        ax.legend()
+        ax.grid()
+
+    for idx in range(len(instance_sizes), len(axes)):
+        fig.delaxes(axes[idx])
+
+    plt.tight_layout()
+    plt.savefig(f"plots/{output_file}")
+    plt.close()
+
+
+def plot_cost_vs(data_by_instance, measure="time", output_file="cost_vs_time.png"):
+    instance_sizes = list(data_by_instance.keys())
+    fig, axes = plt.subplots(2, 4, figsize=(20, 10))
+    axes = axes.flatten()
+
+    for idx, instance_size in enumerate(instance_sizes):
+        if idx >= len(axes):
+            break
+
+        ax = axes[idx]
+        functions_data = data_by_instance[instance_size]
+
+        for function_name, runs_list in functions_data.items():
+            if function_name in ["randomWalk", "randomSearch"]:
+                continue
+            times = []
+            final_costs = []
+
+            for runs in runs_list:
+                for run in runs:
+                    times.append(run[measure])
+                    final_costs.append(run["solution"]["cost"])
+
+            ax.scatter(times, final_costs, label=function_name, alpha=0.7)
+
+        ax.set_title(f"Instance Size: {instance_size}")
+        ax.set_xlabel(measure)
+        ax.set_ylabel("Final Solution Cost")
+        ax.legend()
+        ax.grid()
+
+    for idx in range(len(instance_sizes), len(axes)):
+        fig.delaxes(axes[idx])
+
+    plt.tight_layout()
+    plt.savefig(f"plots/{output_file}")
+    plt.close()
+
+
+def plot_cost_vs_similarity(
+    data_by_instance, optimal_solutions, output_file="cost_vs_similarity.png"
+):
+    """
+    Plots a scatter plot of solution cost vs. similarity to the optimal solution.
+    """
+    instance_sizes = list(data_by_instance.keys())
+    fig, axes = plt.subplots(2, 4, figsize=(20, 10))
+    axes = axes.flatten()
+
+    for idx, instance_size in enumerate(instance_sizes):
+        ax = axes[idx]
+        functions_data = data_by_instance[instance_size]
+        optimal_solution = optimal_solutions[instance_size]["permutation"]
+
+        for function_name, runs_list in functions_data.items():
+            costs = []
+            similarities = []
+
+            for runs in runs_list:
+                for run in runs:
+                    solution_cost = run["finalSolution"]["cost"]
+                    solution_permutation = run["finalSolution"]["permutation"]
+                    similarity = calculate_similarity(
+                        optimal_solution, solution_permutation
+                    )
+                    costs.append(solution_cost)
+                    similarities.append(similarity)
+
+            ax.scatter(costs, similarities, label=function_name, alpha=0.7)
+
+        ax.set_title(f"Instance Size: {instance_size}")
+        ax.set_xlabel("Solution Cost")
+        ax.set_ylabel("Similarity to Optimal Solution")
+        ax.legend()
+        ax.grid()
+
+    for idx in range(len(instance_sizes), len(axes)):
+        fig.delaxes(axes[idx])
+
+    plt.tight_layout()
+    plt.savefig(f"plots/{output_file}")
+    plt.close()
+
+
+def calculate_similarity(optimal_permutation, solution_permutation):
+    """
+    Calculates the similarity between two permutations as the number of elements
+    in the same position in both permutations.
+    """
+    return sum(
+        1 for o, s in zip(optimal_permutation, solution_permutation) if o == s
+    ) / len(optimal_permutation)
 
 
 if __name__ == "__main__":
-    cost_time_results = load_results("cost-time-results.txt")
-    # burnout_results = load_results("burnout-results.txt")
+    cost_time_results = load_results("results/cost-time-results.txt")
+    initial_final_results = load_results("results/initial-final.txt")
+    burnout_results = load_results("results/burnout-results.txt")
     cost_time_by_instance, cost_time_optimas = group_data(cost_time_results)
-    # burnout_by_instance, burnout_optimas = group_data(burnout_results)
-    plot_all_algorithms_average_performance(cost_time_by_instance, cost_time_optimas)
-    plot_all_algorithms_average_running_times(cost_time_by_instance, cost_time_optimas)
-    # plot_cost_over_time(burnout_by_instance, burnout_optimas)
-    # plot_initial_vs_final_quality(data_by_instance)
-    # print_average_best_scores(data_by_instance)
+    initial_final_by_instance = group_initial_final_data(initial_final_results)
+    burnout_by_instance, burnout_optimas = group_data(burnout_results)
+    plot_all_average_performance(cost_time_by_instance, cost_time_optimas)
+    plot_all_average_measure(cost_time_by_instance, "time")
+    plot_all_average_measure(cost_time_by_instance, "iterations")
+    plot_all_average_measure(cost_time_by_instance, "evaluations")
+    plot_all_average_measure(cost_time_by_instance, "time", log_scale=True)
+    plot_all_average_measure(cost_time_by_instance, "iterations", log_scale=True)
+    plot_all_average_measure(cost_time_by_instance, "evaluations", log_scale=True)
+    plot_cost_vs(cost_time_by_instance, "time", "cost-time.png")
+    plot_cost_vs(cost_time_by_instance, "iterations", "cost-iterations.png")
+    plot_cost_vs(cost_time_by_instance, "evaluations", "cost-evaluations.png")
+    plot_initial_vs_final_quality(
+        initial_final_by_instance,
+        equal_axis=True,
+        output_file="initial_vs_final_equal_axis.png",
+    )
+    plot_initial_vs_final_quality(
+        initial_final_by_instance, equal_axis=False, output_file="initial_vs_final.png"
+    )
+    plot_cost_vs_similarity(
+        initial_final_by_instance, cost_time_optimas, "cost-similarity.png"
+    )
+    plot_cost_over_measure(burnout_by_instance, burnout_optimas, "time")
+    plot_cost_over_measure(burnout_by_instance, burnout_optimas, "iterations")
+    plot_cost_over_measure(burnout_by_instance, burnout_optimas, "evaluations")
+    plot_average_cost_over_measure(
+        burnout_by_instance, burnout_optimas, "time", "average_cost_over_time"
+    )
+    plot_average_cost_over_measure(
+        burnout_by_instance,
+        burnout_optimas,
+        "iterations",
+        "average_cost_over_iterations",
+    )
+    plot_average_cost_over_measure(
+        burnout_by_instance,
+        burnout_optimas,
+        "evaluations",
+        "average_cost_over_evaluations",
+    )

@@ -4,17 +4,17 @@ import java.io.File
 
 class FileWriter {
     fun clear() {
-        File("results/cost-time-results.txt").writeText("")
+//        File("results/cost-time-results.txt").writeText("")
         File("results/burnout-results.txt").writeText("")
-        File("results/initial-final.txt").writeText("")
+//        File("results/initial-final.txt").writeText("")
     }
 
-    fun writeCostTimeResultsToFile(benchmarkResults: BenchmarkResult) {
+    fun writeCostResultsToFile(benchmarkResults: BenchmarkResult) {
         val file = File("results/cost-time-results.txt")
         file.appendText("${benchmarkResults.toJson()}${System.lineSeparator()}")
     }
 
-    fun writeCostTimeResultsToFile(costOverTimeBenchmarkResult: CostOverTimeBenchmarkResult) {
+    fun writeBurnoutResultsToFile(costOverTimeBenchmarkResult: CostOverTimeBenchmarkResult) {
         val file = File("results/burnout-results.txt")
         file.appendText("${costOverTimeBenchmarkResult.toJson()}${System.lineSeparator()}")
     }
@@ -24,4 +24,3 @@ class FileWriter {
         file.appendText("${initialVsFinalResult.toJson()}${System.lineSeparator()}")
     }
 }
-
