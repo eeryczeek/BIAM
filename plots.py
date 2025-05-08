@@ -4,11 +4,25 @@ import numpy as np
 from collections import defaultdict
 
 FUNCTION_COLORS = {
+    "heuristic": "black",
     "randomWalk": "blue",
     "randomSearch": "green",
     "localSearchGreedy": "orange",
     "localSearchSteepest": "purple",
+    "simulatedAnnealing": "pink",
+    "tabuSearch": "turquoise",
 }
+plt.rcParams.update(
+    {
+        "font.size": 14,
+        "axes.titlesize": 18,
+        "axes.labelsize": 16,
+        "ytick.labelsize": 14,
+        "xtick.labelsize": 14,
+        "legend.fontsize": 14,
+        "figure.titlesize": 20,
+    }
+)
 
 
 def load_results(file_path):
@@ -44,154 +58,16 @@ def group_initial_final_data(benchmark_results):
     return data_by_instance
 
 
-def plot_cost_over_measure(
-    data_by_instance, optimal_solutions, measure, output_file="burnout_chart"
+def scaled_distance(cost, optimal_cost):
+    """Calculates the fitness as (cost - optimal) / optimal."""
+    return (cost - optimal_cost) / optimal_cost
+
+
+def distance_by_instance(
+    data_by_instance, optimal_solutions, output_file="average-fitness"
 ):
-    instance_sizes = list(data_by_instance.keys())
-    fig, axes = plt.subplots(2, 4, figsize=(24, 12))
-    axes = axes.flatten()
-
-    for idx, instance_size in enumerate(instance_sizes):
-        if idx >= len(axes):
-            break
-
-        ax = axes[idx]
-        functions_data = data_by_instance[instance_size]
-
-        for function_name, runs_list in functions_data.items():
-            label = True
-            for runs in runs_list:
-                for run in runs:
-                    times = [int(entry[measure]) for entry in run]
-                    costs = [int(entry["solution"]["cost"]) for entry in run]
-                    ax.plot(
-                        times,
-                        costs,
-                        label=function_name if label else None,
-                        alpha=0.7,
-                        color=FUNCTION_COLORS.get(function_name, "black"),
-                    )
-                    label = False
-
-        if instance_size in optimal_solutions:
-            optimal_cost = optimal_solutions[instance_size]["cost"]
-            ax.axhline(
-                y=optimal_cost,
-                color="red",
-                linestyle="--",
-                label=f"Optimal Solution (Cost: {optimal_cost})",
-            )
-
-        ax.set_title(f"Instance Size: {instance_size}")
-        ax.set_xlabel("Time (ms)")
-        ax.set_ylabel("Cost")
-        ax.legend(loc="upper right", fontsize="small")
-        ax.grid()
-
-    plt.subplots_adjust(hspace=0.4, wspace=0.3)
-    plt.tight_layout()
-    plt.savefig(f"plots/{output_file}_{measure}.png")
-    plt.close()
-
-
-def plot_average_cost_over_measure(
-    data_by_instance,
-    optimal_solutions,
-    measure,
-    output_file="average_cost_over_measure",
-):
-    """
-    Plots the average and minimum of the last costs for each measurement value.
-    """
-    instance_sizes = list(data_by_instance.keys())
-    fig, axes = plt.subplots(2, 4, figsize=(24, 12))
-    axes = axes.flatten()
-
-    for idx, instance_size in enumerate(instance_sizes):
-        if idx >= len(axes):
-            break
-
-        ax = axes[idx]
-        functions_data = data_by_instance[instance_size]
-
-        for function_name, runs_list in functions_data.items():
-            all_measurements = []
-            all_costs = []
-
-            # Collect all measurements and costs
-            for runs in runs_list:
-                for run in runs:
-                    all_measurements.extend([int(entry[measure]) for entry in run])
-                    all_costs.extend([int(entry["solution"]["cost"]) for entry in run])
-
-            # Sort measurements
-            sorted_measurements = sorted(set(all_measurements))
-
-            # Compute the average and minimum of the last costs for each measurement
-            avg_last_costs = []
-            min_last_costs = []
-
-            for m in sorted_measurements:
-                # Filter runs up to the current measurement
-                last_costs = []
-                for runs in runs_list:
-                    for run in runs:
-                        filtered_costs = [
-                            int(entry["solution"]["cost"])
-                            for entry in run
-                            if int(entry[measure]) <= m
-                        ]
-                        if filtered_costs:
-                            last_costs.append(filtered_costs[-1])  # Take the last cost
-
-                # Compute the average and minimum of the last costs
-                if last_costs:
-                    avg_last_costs.append(sum(last_costs) / len(last_costs))
-                    min_last_costs.append(min(last_costs))
-
-            # Plot the results
-            ax.plot(
-                sorted_measurements,
-                avg_last_costs,
-                label=f"{function_name} (avg last)",
-                linestyle="-",
-                alpha=0.7,
-                color=FUNCTION_COLORS.get(function_name, "black"),
-            )
-            ax.plot(
-                sorted_measurements,
-                min_last_costs,
-                label=f"{function_name} (min last)",
-                linestyle="--",
-                alpha=0.7,
-                color=FUNCTION_COLORS.get(function_name, "black"),
-            )
-
-        if instance_size in optimal_solutions:
-            optimal_cost = optimal_solutions[instance_size]["cost"]
-            ax.axhline(
-                y=optimal_cost,
-                color="red",
-                linestyle="--",
-                label=f"Optimal Solution (Cost: {optimal_cost})",
-            )
-
-        ax.set_title(f"Instance Size: {instance_size}")
-        ax.set_xlabel(f"{measure.capitalize()} (ms)")
-        ax.set_ylabel("Cost")
-        ax.legend(loc="upper right", fontsize="small")
-        ax.grid()
-
-    plt.subplots_adjust(hspace=0.4, wspace=0.3)
-    plt.tight_layout()
-    plt.savefig(f"plots/{output_file}_{measure}.png")
-    plt.close()
-
-
-def plot_all_average_performance(data_by_instance, optimal_solutions):
-    plt.figure(figsize=(10, 6))
-    plt.title("Comparison of Algorithms' Average Fitness Across All Instance Sizes")
-
+    """Plots the average fitness for each algorithm across all instance sizes."""
+    plt.figure(figsize=(12, 8))
     aggregated_fitness = defaultdict(list)
     aggregated_std = defaultdict(list)
 
@@ -202,14 +78,16 @@ def plot_all_average_performance(data_by_instance, optimal_solutions):
         optimal_value = optimal_solutions[instance_size]["cost"]
 
         for function_name, runs_list in functions_data.items():
+            if function_name in ["randomWalk", "randomSearch", "heuristic"]:
+                continue
             final_costs = [
                 run["solution"]["cost"] for runs in runs_list for run in runs
             ]
-            fitness_values = [
+            distance_values = [
                 (cost - optimal_value) / optimal_value for cost in final_costs
             ]
-            aggregated_fitness[function_name].append(np.mean(fitness_values))
-            aggregated_std[function_name].append(np.std(fitness_values))
+            aggregated_fitness[function_name].append(np.mean(distance_values))
+            aggregated_std[function_name].append(np.std(distance_values))
 
     for function_name in aggregated_fitness.keys():
         avg_fitness = aggregated_fitness[function_name]
@@ -220,18 +98,110 @@ def plot_all_average_performance(data_by_instance, optimal_solutions):
             yerr=std_fitness,
             label=function_name,
             capsize=5,
+            color=FUNCTION_COLORS.get(function_name, "black"),
         )
 
     plt.xlabel("Instance Size")
-    plt.ylabel("Average Fitness (with Std Dev)")
+    plt.ylabel("Average Scaled Distance (with Std Dev)")
     plt.legend()
     plt.grid()
-    plt.savefig("plots/average_performance.png")
+    plt.tight_layout()
+    plt.savefig(f"plots/{output_file}.png")
 
 
-def plot_all_average_measure(data_by_instance, measure, log_scale=False):
+def average_distance_by_measure(
+    data_by_instance,
+    optimal_solutions,
+    measure,
+    output_file="average-distance-by",
+):
+    """Plots the average and minimum of the last scaled distances for each measurement value."""
+    instance_sizes = list(data_by_instance.keys())
+    fig, axes = plt.subplots(2, 4, figsize=(24, 12))
+    axes = axes.flatten()
+
+    for idx, instance_size in enumerate(instance_sizes):
+        if idx >= len(axes):
+            break
+
+        ax = axes[idx]
+        functions_data = data_by_instance[instance_size]
+
+        if instance_size not in optimal_solutions:
+            continue
+
+        optimal_cost = optimal_solutions[instance_size]["cost"]
+
+        for function_name, runs_list in functions_data.items():
+            all_measurements = []
+            all_distances = []
+
+            for runs in runs_list:
+                for run in runs:
+                    all_measurements.extend([int(entry[measure]) for entry in run])
+                    all_distances.extend(
+                        [
+                            scaled_distance(
+                                int(entry["solution"]["cost"]), optimal_cost
+                            )
+                            for entry in run
+                        ]
+                    )
+
+            sorted_measurements = sorted(set(all_measurements))
+
+            avg_last_distances = []
+            min_last_distances = []
+
+            for m in sorted_measurements:
+                last_distances = []
+                for runs in runs_list:
+                    for run in runs:
+                        filtered_distances = [
+                            scaled_distance(
+                                int(entry["solution"]["cost"]), optimal_cost
+                            )
+                            for entry in run
+                            if int(entry[measure]) <= m
+                        ]
+                        if filtered_distances:
+                            last_distances.append(filtered_distances[-1])
+
+                if last_distances:
+                    avg_last_distances.append(sum(last_distances) / len(last_distances))
+                    min_last_distances.append(min(last_distances))
+
+            ax.plot(
+                sorted_measurements,
+                avg_last_distances,
+                label=f"{function_name}",
+                linestyle="-",
+                color=FUNCTION_COLORS.get(function_name, "black"),
+            )
+
+            ax.plot(
+                sorted_measurements,
+                min_last_distances,
+                linestyle="--",
+                color=FUNCTION_COLORS.get(function_name, "black"),
+            )
+
+        ax.set_title(f"Instance Size: {instance_size}")
+        ax.set_xlabel(f"{measure.capitalize()}")
+        ax.set_ylabel("Scaled Distance to Optimal Solution")
+        ax.legend()
+        ax.grid()
+
+    plt.subplots_adjust(hspace=0.4, wspace=0.3)
+    plt.tight_layout()
+    plt.savefig(f"plots/{output_file}-{measure}.png")
+    plt.close()
+
+
+def plot_all_average_measure(
+    data_by_instance, measure, log_scale=False, output_file="average"
+):
     plt.figure(figsize=(12, 8))
-    plt.title(f"Algorithms' average {measure} across all instance sizes")
 
     aggregated_times = defaultdict(list)
     aggregated_std = defaultdict(list)
@@ -256,6 +226,7 @@ def plot_all_average_measure(data_by_instance, measure, log_scale=False):
             capsize=5,
             marker="o",
             linestyle="-",
+            color=FUNCTION_COLORS.get(function_name, "black"),
         )
 
     plt.xticks(x, data_by_instance.keys())
@@ -264,18 +235,17 @@ def plot_all_average_measure(data_by_instance, measure, log_scale=False):
         plt.yscale("log")
         plt.ylabel(f"Average {measure} (ms, log scale)")
     else:
-        plt.ylabel(f"Average {measure} (ms)")
+        plt.ylabel(f"Average {measure}")
     plt.legend()
     plt.grid(axis="y", which="both", linestyle="--", linewidth=0.5)
     plt.tight_layout()
-    plt.savefig(f"plots/average_{measure}{'_log' if log_scale else ''}.png")
+    plt.savefig(f"plots/{output_file}-{measure}{'-log' if log_scale else ''}.png")
+    plt.close()
 
 
-def plot_initial_vs_final_quality(
-    data_by_instance, equal_axis=False, output_file="initial_vs_final.png"
-):
+def initial_final(data_by_instance, equal_axis=False, output_file="initial-final.png"):
     instance_sizes = list(data_by_instance.keys())
-    fig, axes = plt.subplots(2, 4, figsize=(20, 10))
+    fig, axes = plt.subplots(2, 4, figsize=(24, 12))
     axes = axes.flatten()
 
     for idx, instance_size in enumerate(instance_sizes):
@@ -297,7 +267,13 @@ def plot_initial_vs_final_quality(
                     initial_costs.append(run["initialSolution"]["cost"])
                     final_costs.append(run["finalSolution"]["cost"])
 
-            ax.scatter(initial_costs, final_costs, label=function_name, alpha=0.7)
+            ax.scatter(
+                initial_costs,
+                final_costs,
+                label=function_name,
+                alpha=0.7,
+                color=FUNCTION_COLORS.get(function_name, "black"),
+            )
             all_initial_costs.extend(initial_costs)
             all_final_costs.extend(final_costs)
 
@@ -325,13 +301,20 @@ def plot_initial_vs_final_quality(
         fig.delaxes(axes[idx])
 
     plt.tight_layout()
-    plt.savefig(f"plots/{output_file}")
+    plt.savefig(
+        f"plots/{output_file}_equal_axis.png"
+        if equal_axis
+        else f"plots/{output_file}.png"
+    )
     plt.close()
 
 
-def plot_cost_vs(data_by_instance, measure="time", output_file="cost_vs_time.png"):
+def scaled_distance_vs(
+    data_by_instance, optimal_solutions, measure="time", output_file="fitness-vs"
+):
+    """Plots a scatter plot of solution fitness vs. a given measure (e.g., time)."""
     instance_sizes = list(data_by_instance.keys())
-    fig, axes = plt.subplots(2, 4, figsize=(20, 10))
+    fig, axes = plt.subplots(2, 4, figsize=(24, 12))
     axes = axes.flatten()
 
     for idx, instance_size in enumerate(instance_sizes):
@@ -341,22 +324,37 @@ def plot_cost_vs(data_by_instance, measure="time", output_file="cost_vs_time.png
         ax = axes[idx]
         functions_data = data_by_instance[instance_size]
 
+        if instance_size not in optimal_solutions:
+            continue
+
+        optimal_cost = optimal_solutions[instance_size]["cost"]
+
         for function_name, runs_list in functions_data.items():
-            if function_name in ["randomWalk", "randomSearch"]:
-                continue
-            times = []
-            final_costs = []
+            measures = []
+            distances = []
 
             for runs in runs_list:
                 for run in runs:
-                    times.append(run[measure])
-                    final_costs.append(run["solution"]["cost"])
+                    measure_value = run[measure]
+                    solution_cost = run["solution"]["cost"]
 
-            ax.scatter(times, final_costs, label=function_name, alpha=0.7)
+                    distance = scaled_distance(solution_cost, optimal_cost)
+
+                    measures.append(measure_value)
+                    distances.append(distance)
+
+            ax.scatter(
+                np.array(measures) + np.random.uniform(-0.1, 0.1, size=len(measures)),
+                np.array(distances)
+                + np.random.uniform(-0.01, 0.01, size=len(distances)),
+                label=function_name,
+                alpha=0.7,
+                color=FUNCTION_COLORS.get(function_name, "black"),
+            )
 
         ax.set_title(f"Instance Size: {instance_size}")
-        ax.set_xlabel(measure)
-        ax.set_ylabel("Final Solution Cost")
+        ax.set_xlabel(measure.capitalize())
+        ax.set_ylabel("Scaled Distance to Optimal Solution")
         ax.legend()
         ax.grid()
 
@@ -364,52 +362,242 @@ def plot_cost_vs(data_by_instance, measure="time", output_file="cost_vs_time.png
         fig.delaxes(axes[idx])
 
     plt.tight_layout()
-    plt.savefig(f"plots/{output_file}")
+    plt.savefig(f"plots/{output_file}-{measure}.png")
     plt.close()
 
 
-def plot_cost_vs_similarity(
-    data_by_instance, optimal_solutions, output_file="cost_vs_similarity.png"
+def distance_vs_only_search(
+    data_by_instance, optimal_solutions, measure="time", output_file="fitness-vs"
 ):
-    """
-    Plots a scatter plot of solution cost vs. similarity to the optimal solution.
-    """
+    """Plots a scatter plot of solution fitness vs. a given measure (e.g., time)."""
     instance_sizes = list(data_by_instance.keys())
-    fig, axes = plt.subplots(2, 4, figsize=(20, 10))
+    fig, axes = plt.subplots(2, 4, figsize=(24, 12))
+    axes = axes.flatten()
+
+    for idx, instance_size in enumerate(instance_sizes):
+        if idx >= len(axes):
+            break
+
+        ax = axes[idx]
+        functions_data = data_by_instance[instance_size]
+
+        if instance_size not in optimal_solutions:
+            continue
+
+        optimal_cost = optimal_solutions[instance_size]["cost"]
+
+        for function_name, runs_list in functions_data.items():
+            if function_name in ["randomWalk", "randomSearch", "heuristic"]:
+                continue
+            measures = []
+            distances = []
+
+            for runs in runs_list:
+                for run in runs:
+                    measure_value = run[measure]
+                    solution_cost = run["solution"]["cost"]
+
+                    distance = scaled_distance(solution_cost, optimal_cost)
+
+                    measures.append(measure_value)
+                    distances.append(distance)
+
+            ax.scatter(
+                np.array(measures) + np.random.uniform(-0.1, 0.1, size=len(measures)),
+                np.array(distances)
+                + np.random.uniform(-0.01, 0.01, size=len(distances)),
+                label=function_name,
+                alpha=0.7,
+                color=FUNCTION_COLORS.get(function_name, "black"),
+            )
+
+        ax.set_title(f"Instance Size: {instance_size}")
+        ax.set_xlabel(measure.capitalize())
+        ax.set_ylabel("Scaled Distance to Optimal Solution")
+        ax.legend()
+        ax.grid()
+
+    for idx in range(len(instance_sizes), len(axes)):
+        fig.delaxes(axes[idx])
+
+    plt.tight_layout()
+    plt.savefig(f"plots/{output_file}-{measure}-search.png")
+    plt.close()
+
+
+def distance_similarity(data_by_instance, optimal_solutions, output_file="similarity"):
+    """Plots a scatter plot of solution fitness vs. similarity to the optimal solution."""
+    instance_sizes = list(data_by_instance.keys())
+    fig, axes = plt.subplots(2, 4, figsize=(24, 12))
     axes = axes.flatten()
 
     for idx, instance_size in enumerate(instance_sizes):
         ax = axes[idx]
         functions_data = data_by_instance[instance_size]
+        optimal_cost = optimal_solutions[instance_size]["cost"]
         optimal_solution = optimal_solutions[instance_size]["permutation"]
 
         for function_name, runs_list in functions_data.items():
-            costs = []
+            distances = []
             similarities = []
 
             for runs in runs_list:
                 for run in runs:
                     solution_cost = run["finalSolution"]["cost"]
                     solution_permutation = run["finalSolution"]["permutation"]
+                    distance = scaled_distance(solution_cost, optimal_cost)
                     similarity = calculate_similarity(
                         optimal_solution, solution_permutation
                     )
-                    costs.append(solution_cost)
+                    distances.append(distance)
                     similarities.append(similarity)
-
-            ax.scatter(costs, similarities, label=function_name, alpha=0.7)
+            ax.scatter(
+                similarities + np.random.uniform(-0.003, 0.003, size=len(similarities)),
+                distances + np.random.uniform(-0.003, 0.003, size=len(distances)),
+                label=function_name,
+                alpha=0.7,
+                color=FUNCTION_COLORS.get(function_name, "black"),
+            )
 
         ax.set_title(f"Instance Size: {instance_size}")
-        ax.set_xlabel("Solution Cost")
-        ax.set_ylabel("Similarity to Optimal Solution")
+        ax.set_xlabel("Similarity to Optimal Solution")
+        ax.set_ylabel("Scaled Distance to Optimal Solution")
         ax.legend()
         ax.grid()
 
-    for idx in range(len(instance_sizes), len(axes)):
-        fig.delaxes(axes[idx])
+    plt.tight_layout()
+    plt.savefig(f"plots/{output_file}.png")
+    plt.close()
+
+
+def distance_average_similarity(
+    data_by_instance, optimal_solutions, output_file="similarity-average"
+):
+    """
+    Plots a scatter plot of solution average similarity vs. fitness.
+    """
+    instance_sizes = list(data_by_instance.keys())
+    fig, axes = plt.subplots(2, 4, figsize=(24, 12))
+    axes = axes.flatten()
+
+    for idx, instance_size in enumerate(instance_sizes):
+        if idx >= len(axes):
+            break
+
+        ax = axes[idx]
+        functions_data = data_by_instance[instance_size]
+
+        if instance_size not in optimal_solutions:
+            continue
+
+        optimal_cost = optimal_solutions[instance_size]["cost"]
+
+        for function_name, runs_list in functions_data.items():
+            average_similarities = []
+            distances = []
+
+            all_solutions = [
+                run["finalSolution"]["permutation"]
+                for runs in runs_list
+                for run in runs
+            ]
+
+            for runs in runs_list:
+                for run in runs:
+                    solution_cost = run["finalSolution"]["cost"]
+                    solution_permutation = run["finalSolution"]["permutation"]
+
+                    distance = scaled_distance(solution_cost, optimal_cost)
+                    similarities = [
+                        calculate_similarity(solution_permutation, other_permutation)
+                        for other_permutation in all_solutions
+                        if other_permutation != solution_permutation
+                    ]
+                    average_similarity = sum(similarities) / len(similarities)
+
+                    average_similarities.append(average_similarity)
+                    distances.append(distance)
+
+            ax.scatter(
+                average_similarities,
+                distances,
+                label=function_name,
+                alpha=0.7,
+                color=FUNCTION_COLORS.get(function_name, "black"),
+            )
+
+        ax.set_title(f"Instance Size: {instance_size}")
+        ax.set_xlabel("Average Similarity to Other Solutions")
+        ax.set_ylabel("Scaled Distance to Optimal Solution")
+        ax.legend()
+        ax.grid()
 
     plt.tight_layout()
-    plt.savefig(f"plots/{output_file}")
+    plt.savefig(f"plots/{output_file}.png")
+    plt.close()
+
+
+def multi_start_local_search(
+    data_by_instance, optimal_solutions, output_file="multi-start-local-search"
+):
+    """
+    Treats final solutions as multi-start local search results and plots the best (minimum)
+    and average scaled distances for each algorithm.
+    """
+    instance_sizes = list(data_by_instance.keys())
+    fig, axes = plt.subplots(2, 4, figsize=(24, 12))
+    axes = axes.flatten()
+
+    for idx, instance_size in enumerate(instance_sizes):
+        if idx >= len(axes):
+            break
+
+        ax = axes[idx]
+        functions_data = data_by_instance[instance_size]
+
+        if instance_size not in optimal_solutions:
+            continue
+
+        optimal_cost = optimal_solutions[instance_size]["cost"]
+
+        for function_name, runs_list in functions_data.items():
+            avg_scaled_distances = []
+            min_scaled_distances = []
+
+            for runs in runs_list:
+                scaled_distances = [
+                    scaled_distance(run["finalSolution"]["cost"], optimal_cost)
+                    for run in runs
+                ]
+
+                if scaled_distances:
+                    for i in range(len(scaled_distances)):
+                        avg_scaled_distances.append(np.mean(scaled_distances[: i + 1]))
+                        min_scaled_distances.append(min(scaled_distances[: i + 1]))
+
+            ax.plot(
+                range(len(avg_scaled_distances)),
+                avg_scaled_distances,
+                linestyle="--",
+                color=FUNCTION_COLORS.get(function_name, "black"),
+            )
+            ax.plot(
+                range(len(min_scaled_distances)),
+                min_scaled_distances,
+                label=f"{function_name}",
+                linestyle="-",
+                color=FUNCTION_COLORS.get(function_name, "black"),
+            )
+
+        ax.set_title(f"Instance Size: {instance_size}")
+        ax.set_xlabel("Run Index")
+        ax.set_ylabel("Scaled Distance to Optimal Solution")
+        ax.legend()
+        ax.grid()
+
+    plt.subplots_adjust(hspace=0.4, wspace=0.3)
+    plt.tight_layout()
+    plt.savefig(f"plots/{output_file}.png")
     plt.close()
 
 
@@ -425,47 +613,26 @@ def calculate_similarity(optimal_permutation, solution_permutation):
 
 if __name__ == "__main__":
     cost_time_results = load_results("results/cost-time-results.txt")
-    initial_final_results = load_results("results/initial-final.txt")
-    burnout_results = load_results("results/burnout-results.txt")
+    # initial_final_results = load_results("results/initial-final.txt")
+    # burnout_results = load_results("results/burnout-results.txt")
     cost_time_by_instance, cost_time_optimas = group_data(cost_time_results)
-    initial_final_by_instance = group_initial_final_data(initial_final_results)
-    burnout_by_instance, burnout_optimas = group_data(burnout_results)
-    plot_all_average_performance(cost_time_by_instance, cost_time_optimas)
+    # initial_final_by_instance = group_initial_final_data(initial_final_results)
+    # burnout_by_instance, burnout_optimas = group_data(burnout_results)
+    # multi_start_local_search(initial_final_by_instance, cost_time_optimas)
+
+    distance_by_instance(cost_time_by_instance, cost_time_optimas)
     plot_all_average_measure(cost_time_by_instance, "time")
     plot_all_average_measure(cost_time_by_instance, "iterations")
     plot_all_average_measure(cost_time_by_instance, "evaluations")
     plot_all_average_measure(cost_time_by_instance, "time", log_scale=True)
     plot_all_average_measure(cost_time_by_instance, "iterations", log_scale=True)
     plot_all_average_measure(cost_time_by_instance, "evaluations", log_scale=True)
-    plot_cost_vs(cost_time_by_instance, "time", "cost-time.png")
-    plot_cost_vs(cost_time_by_instance, "iterations", "cost-iterations.png")
-    plot_cost_vs(cost_time_by_instance, "evaluations", "cost-evaluations.png")
-    plot_initial_vs_final_quality(
-        initial_final_by_instance,
-        equal_axis=True,
-        output_file="initial_vs_final_equal_axis.png",
-    )
-    plot_initial_vs_final_quality(
-        initial_final_by_instance, equal_axis=False, output_file="initial_vs_final.png"
-    )
-    plot_cost_vs_similarity(
-        initial_final_by_instance, cost_time_optimas, "cost-similarity.png"
-    )
-    plot_cost_over_measure(burnout_by_instance, burnout_optimas, "time")
-    plot_cost_over_measure(burnout_by_instance, burnout_optimas, "iterations")
-    plot_cost_over_measure(burnout_by_instance, burnout_optimas, "evaluations")
-    plot_average_cost_over_measure(
-        burnout_by_instance, burnout_optimas, "time", "average_cost_over_time"
-    )
-    plot_average_cost_over_measure(
-        burnout_by_instance,
-        burnout_optimas,
-        "iterations",
-        "average_cost_over_iterations",
-    )
-    plot_average_cost_over_measure(
-        burnout_by_instance,
-        burnout_optimas,
-        "evaluations",
-        "average_cost_over_evaluations",
-    )
+    scaled_distance_vs(cost_time_by_instance, cost_time_optimas, "time")
+    distance_vs_only_search(cost_time_by_instance, cost_time_optimas, "time")
+    scaled_distance_vs(cost_time_by_instance, cost_time_optimas, "iterations")
+    scaled_distance_vs(cost_time_by_instance, cost_time_optimas, "evaluations")
+    # initial_final(initial_final_by_instance, equal_axis=True)
+    # initial_final(initial_final_by_instance, equal_axis=False)
+    # distance_similarity(initial_final_by_instance, cost_time_optimas)
+    # distance_average_similarity(initial_final_by_instance, cost_time_optimas)
+    # average_distance_by_measure(burnout_by_instance, burnout_optimas, "time")

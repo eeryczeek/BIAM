@@ -5,7 +5,7 @@ import org.example.Solution
 
 tailrec fun randomWalk(
     solution: Solution,
-    bestSolution: BestSolution,
+    bestSolution: Solution,
     startTime: Long,
     maxTime: Long,
     iterations: Long = 0,
@@ -13,19 +13,14 @@ tailrec fun randomWalk(
 ): BestSolution {
     if (System.currentTimeMillis() - startTime >= maxTime) {
         return BestSolution(
-            solution,
+            bestSolution,
             System.currentTimeMillis() - startTime,
             iterations,
             evaluations
         )
     }
     val newSolution = solution.getNeighbourhood().first()
-    val newBestSolution = if (bestSolution.solution.cost < newSolution.cost) bestSolution else BestSolution(
-        newSolution,
-        System.currentTimeMillis() - startTime,
-        iterations + 1,
-        evaluations + 1
-    )
+    val newBestSolution = if (bestSolution.cost < newSolution.cost) bestSolution else newSolution
     return randomWalk(
         newSolution,
         newBestSolution,
@@ -75,25 +70,3 @@ tailrec fun randomWalkHistory(
         evaluations + 1
     )
 }
-//
-// fun randomWalk(maxTime: Long): List<BestSolution> {
-//    val startTime = System.currentTimeMillis()
-//
-//    fun walk(solution: Solution, iterations: Long, bestSolutions: List<BestSolution>): List<BestSolution> {
-//        if (System.currentTimeMillis() - startTime >= maxTime) {
-//            return bestSolutions + BestSolution(solution.cost, iterations, System.currentTimeMillis() - startTime)
-//        }
-//        val newSolution = solution.getNeighbourhood().first()
-//        val newBestSolutions = when {
-//            newSolution.cost < bestSolutions.last().cost ->
-//                bestSolutions + BestSolution(newSolution.cost, iterations, System.currentTimeMillis() - startTime)
-//
-//            else -> bestSolutions
-//        }
-//        return walk(newSolution, iterations + 1, newBestSolutions)
-//    }
-//
-//    val initialSolution = Solution()
-//    val initialBestSolutions = listOf(BestSolution(initialSolution.cost, 0, System.currentTimeMillis() - startTime))
-//    return walk(initialSolution, 0, initialBestSolutions)
-// }

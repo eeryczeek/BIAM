@@ -1,5 +1,9 @@
 package org.example
 
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -7,7 +11,7 @@ import kotlin.random.Random
 
 @Serializable
 class Solution(
-    private val permutation: IntArray = shuffle(IntArray(Problem.n) { it }),
+    val permutation: IntArray = shuffle(IntArray(Problem.n) { it }),
     var cost: Long = 0L
 ) {
     init {
@@ -22,20 +26,24 @@ class Solution(
         }.toLong()
     }
 
-    fun getDeltaCost(i: Int, j: Int): Long {
+    suspend fun getDeltaCost(i: Int, j: Int): Long = coroutineScope {
         val n = Problem.n
-        var deltaCost = 0L
 
-        for (k in 0 until n) {
-            if (k != i && k != j) {
-                deltaCost += (Problem.flowMatrix[permutation[i]][permutation[k]] - Problem.flowMatrix[permutation[j]][permutation[k]]) *
-                    (Problem.distanceMatrix[j][k] - Problem.distanceMatrix[i][k])
-                deltaCost += (Problem.flowMatrix[permutation[k]][permutation[i]] - Problem.flowMatrix[permutation[k]][permutation[j]]) *
-                    (Problem.distanceMatrix[k][j] - Problem.distanceMatrix[k][i])
+        (0 until n)
+            .filter { k -> k != i && k != j }
+            .map { k ->
+                async {
+                    val delta1 =
+                        (Problem.flowMatrix[permutation[i]][permutation[k]] - Problem.flowMatrix[permutation[j]][permutation[k]]) *
+                            (Problem.distanceMatrix[j][k] - Problem.distanceMatrix[i][k])
+                    val delta2 =
+                        (Problem.flowMatrix[permutation[k]][permutation[i]] - Problem.flowMatrix[permutation[k]][permutation[j]]) *
+                            (Problem.distanceMatrix[k][j] - Problem.distanceMatrix[k][i])
+                    delta1 + delta2
+                }
             }
-        }
-
-        return deltaCost
+            .awaitAll()
+            .sum().toLong()
     }
 
     fun getNeighbourhood(ordered: Boolean = false): Sequence<Solution> {
@@ -54,8 +62,7 @@ class Solution(
             innerPermutation.filter { it > i }.asSequence().map { j ->
                 val newPermutation = permutation.clone()
                 newPermutation[i] = permutation[j].also { newPermutation[j] = permutation[i] }
-                val newCost = cost + getDeltaCost(i, j)
-                Solution(newPermutation, newCost)
+                runBlocking { Solution(newPermutation, cost + getDeltaCost(i, j)) }
             }
         }
     }

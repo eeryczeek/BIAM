@@ -5,7 +5,7 @@ import org.example.Solution
 
 tailrec fun randomSearch(
     solution: Solution,
-    bestSolution: BestSolution,
+    bestSolution: Solution,
     startTime: Long,
     maxTime: Long,
     iterations: Long = 0,
@@ -13,19 +13,14 @@ tailrec fun randomSearch(
 ): BestSolution {
     if (System.currentTimeMillis() - startTime >= maxTime) {
         return BestSolution(
-            solution,
+            bestSolution,
             System.currentTimeMillis() - startTime,
             iterations,
             evaluations
         )
     }
     val newSolution = Solution()
-    val newBestSolution = if (bestSolution.solution.cost < newSolution.cost) bestSolution else BestSolution(
-        newSolution,
-        System.currentTimeMillis() - startTime,
-        iterations + 1,
-        evaluations + 1
-    )
+    val newBestSolution = if (bestSolution.cost < newSolution.cost) bestSolution else newSolution
     return randomSearch(
         newSolution,
         newBestSolution,

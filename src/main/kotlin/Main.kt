@@ -18,8 +18,8 @@ fun main() {
     files.forEach { filePath ->
         fileParser.initializeProblem("$filePath.dat")
         fileParser.parseOptimalSolution("$filePath.sln")
-//        benchmarking.performCostBenchmark(10L)
-        benchmarking.performBurnoutBenchmark(10L)
+        benchmarking.performCostBenchmark(10L)
+//        benchmarking.performBurnoutBenchmark(10L)
 //        benchmarking.performInitialVsFinalBenchmark(100L)
     }
 }

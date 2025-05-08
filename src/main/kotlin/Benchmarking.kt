@@ -7,6 +7,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import org.example.solvers.heuristic
 import org.example.solvers.localSearchGreedy
 import org.example.solvers.localSearchGreedyHistory
 import org.example.solvers.localSearchSteepest
@@ -15,10 +16,14 @@ import org.example.solvers.randomSearch
 import org.example.solvers.randomSearchHistory
 import org.example.solvers.randomWalk
 import org.example.solvers.randomWalkHistory
+import org.example.solvers.simulatedAnnealing
 
 class Benchmarking(
     private val fileWriter: FileWriter = FileWriter()
 ) {
+    private val heuristicFunction = mapOf(
+        "heuristic" to ::heuristic,
+    )
     private val localSearchFunctions = mapOf(
         "localSearchGreedy" to ::localSearchGreedy,
         "localSearchSteepest" to ::localSearchSteepest
@@ -43,7 +48,7 @@ class Benchmarking(
         val functionToRuntime = localSearchFunctions.map { (functionName, function) ->
             async {
                 val results = functionRunner(repetitions, functionName) {
-                    function(Solution(), System.currentTimeMillis(), 0, 0)
+                    function(Solution(), System.currentTimeMillis(), 1, 1)
                 }
 
                 fileWriter.writeCostResultsToFile(results)
@@ -51,7 +56,7 @@ class Benchmarking(
             }
         }.awaitAll().toMap()
 
-        val runtime = functionToRuntime.values.maxOrNull()!! / repetitions
+        val runtime = functionToRuntime.values.max() / repetitions
 
         randomSearchFunctions.map { (functionName, function) ->
             async {
@@ -59,16 +64,36 @@ class Benchmarking(
                     val initialSolution = Solution()
                     function(
                         initialSolution,
-                        BestSolution(initialSolution),
+                        initialSolution,
                         System.currentTimeMillis(),
                         runtime,
-                        0,
-                        0
+                        1,
+                        1
                     )
                 }
                 fileWriter.writeCostResultsToFile(results)
             }
         }.awaitAll()
+
+        heuristicFunction.map { (functionName, function) ->
+            async {
+                val results = functionRunner(repetitions, functionName) {
+                    function()
+                }
+                fileWriter.writeCostResultsToFile(results)
+            }
+        }.awaitAll()
+        val results = functionRunner(repetitions, "simulatedAnnealing") {
+            val initialSolution = Solution()
+            simulatedAnnealing(
+                initialSolution,
+                initialSolution,
+                System.currentTimeMillis(),
+                1,
+                1
+            )
+        }
+        fileWriter.writeCostResultsToFile(results)
     }
 
     fun performBurnoutBenchmark(repetitions: Long) {
@@ -77,28 +102,28 @@ class Benchmarking(
             val results = costOverTimeBenchmark(repetitions, functionName) {
                 function(
                     initialSolution,
-                    mutableListOf(BestSolution(initialSolution, 0, 0, 0)),
+                    mutableListOf(BestSolution(initialSolution, 0, 1, 1)),
                     System.currentTimeMillis(),
-                    0,
-                    0
+                    1,
+                    1
                 )
             }
             fileWriter.writeBurnoutResultsToFile(results)
             functionName to results.totalTimeMilliseconds
         }.toMap()
 
-        val runtime = functionToRuntime.values.maxOrNull()!! / repetitions
+        val runtime = functionToRuntime.values.max() / repetitions
 
         randomSearchHistoryFunctions.forEach { (functionName, function) ->
             val results = costOverTimeBenchmark(repetitions, functionName) {
                 val initialSolution = Solution()
                 function(
                     initialSolution,
-                    mutableListOf(BestSolution(initialSolution, 0, 0, 0)),
+                    mutableListOf(BestSolution(initialSolution, 0, 1, 1)),
                     System.currentTimeMillis(),
                     runtime,
-                    0,
-                    0
+                    1,
+                    1
                 )
             }
             fileWriter.writeBurnoutResultsToFile(results)
@@ -110,7 +135,7 @@ class Benchmarking(
             val results = (0 until repetitions).map {
                 async {
                     val initialSolution = Solution()
-                    val finalSolution = function(initialSolution, System.currentTimeMillis(), 0, 0)
+                    val finalSolution = function(initialSolution, System.currentTimeMillis(), 1, 1)
                     InitialVsFinal(initialSolution, finalSolution.solution)
                 }
             }.awaitAll().toSet()
@@ -121,14 +146,18 @@ class Benchmarking(
     private suspend fun functionRunner(
         repetitions: Long,
         functionName: String,
-        function: suspend () -> BestSolution
+        function: () -> BestSolution
     ): BenchmarkResult = coroutineScope {
         val startTime = System.currentTimeMillis()
         val results = (0 until repetitions).map {
             async { function() }
         }.awaitAll().toSet()
         val endTime = System.currentTimeMillis()
-        BenchmarkResult(functionName, repetitions, endTime - startTime, results)
+        if (results.sumOf { it.time } < 100L) {
+            return@coroutineScope functionRunner(repetitions * 10L, functionName, function)
+        } else {
+            return@coroutineScope BenchmarkResult(functionName, repetitions, endTime - startTime, results)
+        }
     }
 
     private fun costOverTimeBenchmark(

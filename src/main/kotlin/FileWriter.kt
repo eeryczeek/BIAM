@@ -4,8 +4,8 @@ import java.io.File
 
 class FileWriter {
     fun clear() {
-//        File("results/cost-time-results.txt").writeText("")
-        File("results/burnout-results.txt").writeText("")
+        File("results/cost-time-results.txt").writeText("")
+//        File("results/burnout-results.txt").writeText("")
 //        File("results/initial-final.txt").writeText("")
     }
 
