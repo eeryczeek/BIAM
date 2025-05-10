@@ -1,5 +1,8 @@
 package org.example
 
+import org.example.benchmarking.BenchmarkResult
+import org.example.benchmarking.CostOverTimeBenchmarkResult
+import org.example.benchmarking.InitialVsFinalResult
 import java.io.File
 
 class FileWriter {

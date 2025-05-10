@@ -20,10 +20,9 @@ tailrec fun randomSearch(
         )
     }
     val newSolution = Solution()
-    val newBestSolution = if (bestSolution.cost < newSolution.cost) bestSolution else newSolution
     return randomSearch(
         newSolution,
-        newBestSolution,
+        if (bestSolution.cost < newSolution.cost) bestSolution else newSolution,
         startTime,
         maxTime,
         iterations + 1,

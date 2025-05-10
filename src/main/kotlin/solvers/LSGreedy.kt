@@ -10,19 +10,20 @@ tailrec fun localSearchGreedy(
     evaluations: Long = 0L
 ): BestSolution {
     val neighbourhood = solution.getNeighbourhood()
-    neighbourhood.find { it.cost < solution.cost }?.let { bestNeighbour ->
+    val index = neighbourhood.indexOfFirst { it.cost < solution.cost }
+    neighbourhood.elementAtOrNull(index)?.let {
         return localSearchGreedy(
-            bestNeighbour,
+            it,
             startTime,
             iterations + 1,
-            evaluations + neighbourhood.indexOf(bestNeighbour) + 1
+            evaluations + index + 1
         )
     }
     return BestSolution(
         solution,
         System.currentTimeMillis() - startTime,
         iterations,
-        evaluations + neighbourhood.count()
+        evaluations + index + 1
     )
 }
 

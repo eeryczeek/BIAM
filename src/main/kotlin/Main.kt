@@ -1,6 +1,8 @@
 package org.example
 
-fun main() {
+import org.example.benchmarking.Benchmarking
+
+suspend fun main() {
     val fileParser = FileParser()
     val files = listOf(
         "input/tai20b",

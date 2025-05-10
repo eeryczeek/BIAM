@@ -20,10 +20,9 @@ tailrec fun randomWalk(
         )
     }
     val newSolution = solution.getNeighbourhood().first()
-    val newBestSolution = if (bestSolution.cost < newSolution.cost) bestSolution else newSolution
     return randomWalk(
         newSolution,
-        newBestSolution,
+        if (newSolution.cost < bestSolution.cost) newSolution else bestSolution,
         startTime,
         maxTime,
         iterations + 1,

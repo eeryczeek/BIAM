@@ -14,40 +14,25 @@ tailrec fun simulatedAnnealing(
     coolingRate: Double = 0.99
 ): BestSolution {
     val neighbourhood = solution.getNeighbourhood()
-    val index =
-        neighbourhood.indexOfFirst { Random.nextDouble() < getProbability(it.cost - solution.cost, temperature) }
-    val newEvaluations = evaluations + index + 1
-    val newSolution = neighbourhood.elementAtOrNull(index)
-
-    val updatedBestSolution = if (newSolution != null && newSolution.cost < bestSolution.cost) {
-        newSolution
-    } else {
-        bestSolution
-    }
-
-    return if (newSolution != null && (
-                newSolution.cost < solution.cost || Random.nextDouble() < getProbability(
-                    newSolution.cost - solution.cost,
-                    temperature
-                )
-                )
-    ) {
-        simulatedAnnealing(
-            updatedBestSolution,
-            newSolution,
+    neighbourhood.find { Random.nextDouble() < getProbability(it.cost - solution.cost, temperature) }?.let {
+        return simulatedAnnealing(
+            if (it.cost < bestSolution.cost) it else bestSolution,
+            it,
             startTime,
             iterations + 1,
-            newEvaluations,
+            evaluations + neighbourhood.indexOf(it) + 1,
             temperature * coolingRate,
             coolingRate
         )
-    } else {
-        simulatedAnnealing(
-            updatedBestSolution,
+    }
+    return when {
+        temperature < 0.01 -> BestSolution(bestSolution, iterations, evaluations)
+        else -> simulatedAnnealing(
+            bestSolution,
             solution,
             startTime,
             iterations + 1,
-            newEvaluations,
+            evaluations + neighbourhood.count() + 1,
             temperature * coolingRate,
             coolingRate
         )
