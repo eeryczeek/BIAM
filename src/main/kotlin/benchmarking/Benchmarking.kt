@@ -26,6 +26,7 @@ import org.example.solvers.randomSearch
 import org.example.solvers.randomSearchHistory
 import org.example.solvers.randomWalk
 import org.example.solvers.randomWalkHistory
+import org.example.solvers.simulatedAnnealing
 
 class Benchmarking(
     private val fileWriter: FileWriter = FileWriter()
@@ -59,7 +60,7 @@ class Benchmarking(
                 function(Solution(), System.currentTimeMillis(), 1, 1)
             }
             fileWriter.writeCostResultsToFile(results)
-            functionName to results.bestSolutions.map { it.solution.cost }.average()
+            functionName to results.bestSolutions.map { it.time }.average()
         }.toMap()
 
         val runtime = (functionToRuntime.values.max() / repetitions).toLong()
@@ -77,7 +78,6 @@ class Benchmarking(
                 )
             }
             fileWriter.writeCostResultsToFile(results)
-
         }
 
         heuristicFunction.map { (functionName, function) ->
@@ -86,17 +86,17 @@ class Benchmarking(
             }
             fileWriter.writeCostResultsToFile(results)
         }
-//        val results = functionRunner(repetitions, "simulatedAnnealing") {
-//            val initialSolution = Solution()
-//            simulatedAnnealing(
-//                initialSolution,
-//                initialSolution,
-//                System.currentTimeMillis(),
-//                1,
-//                1
-//            )
-//        }
-//        fileWriter.writeCostResultsToFile(results)
+        val results = functionRunner(repetitions, "simulatedAnnealing") {
+            val initialSolution = Solution()
+            simulatedAnnealing(
+                initialSolution,
+                initialSolution,
+                System.currentTimeMillis(),
+                1,
+                1
+            )
+        }
+        fileWriter.writeCostResultsToFile(results)
     }
 
     fun performBurnoutBenchmark(repetitions: Long) {
