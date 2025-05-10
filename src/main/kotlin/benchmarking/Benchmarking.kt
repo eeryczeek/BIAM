@@ -88,13 +88,7 @@ class Benchmarking(
         }
         val results = functionRunner(repetitions, "simulatedAnnealing") {
             val initialSolution = Solution()
-            simulatedAnnealing(
-                initialSolution,
-                initialSolution,
-                System.currentTimeMillis(),
-                1,
-                1
-            )
+            simulatedAnnealing(initialSolution, alpha = 0.9, p = 10, acceptanceThreshold = 0.01)
         }
         fileWriter.writeCostResultsToFile(results)
     }
