@@ -25,36 +25,3 @@ tailrec fun localSearchSteepest(
         evaluations + neighbourhood.count()
     )
 }
-
-fun localSearchSteepestHistory(
-    solution: Solution,
-    bestSolutions: MutableList<BestSolution>,
-    startTime: Long = System.currentTimeMillis(),
-    iterations: Long = 1L,
-    evaluations: Long = 1L
-): List<BestSolution> {
-    val neighbourhood = solution.getNeighbourhood()
-    val newEvaluations = evaluations + neighbourhood.count()
-    val bestSolution = neighbourhood.minBy { it.cost }.takeIf { it.cost < solution.cost }
-    return when {
-        bestSolution == null -> bestSolutions
-        else -> {
-            localSearchSteepestHistory(
-                bestSolution,
-                bestSolutions.apply {
-                    add(
-                        BestSolution(
-                            bestSolution,
-                            System.currentTimeMillis() - startTime,
-                            iterations + 1,
-                            newEvaluations
-                        )
-                    )
-                },
-                startTime,
-                iterations + 1,
-                newEvaluations
-            )
-        }
-    }
-}

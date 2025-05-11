@@ -1,7 +1,6 @@
 package org.example.benchmarking
 
 import benchmarking.BestCost
-import benchmarking.CostOverTimeBenchmarkResult
 import benchmarking.GeneralResult
 import benchmarking.InitialVsFinal
 import benchmarking.InitialVsFinalResult
@@ -12,7 +11,6 @@ import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import org.example.BestSolution
 import org.example.FileWriter
@@ -21,13 +19,9 @@ import org.example.Problem
 import org.example.Solution
 import org.example.solvers.heuristic
 import org.example.solvers.localSearchGreedy
-import org.example.solvers.localSearchGreedyHistory
 import org.example.solvers.localSearchSteepest
-import org.example.solvers.localSearchSteepestHistory
 import org.example.solvers.randomSearch
-import org.example.solvers.randomSearchHistory
 import org.example.solvers.randomWalk
-import org.example.solvers.randomWalkHistory
 import org.example.solvers.simulatedAnnealing
 import org.example.solvers.tabuSearch
 
@@ -47,16 +41,6 @@ class Benchmarking(
         "randomSearch" to ::randomSearch
     )
 
-    private val localSearchHistoryFunctions = mapOf(
-        "localSearchGreedy" to ::localSearchGreedyHistory,
-        "localSearchSteepest" to ::localSearchSteepestHistory
-    )
-
-    private val randomSearchHistoryFunctions = mapOf(
-        "randomWalk" to ::randomWalkHistory,
-        "randomSearch" to ::randomSearchHistory
-    )
-
     suspend fun performCostBenchmark(repetitions: Long) {
         val functionToRuntime = localSearchFunctions.map { (functionName, function) ->
             val results = functionRunner(repetitions, functionName) {
@@ -66,22 +50,22 @@ class Benchmarking(
             functionName to results.bestSolutions.map { it.time }.average()
         }.toMap()
 
-//        val runtime = (functionToRuntime.values.max() / repetitions).toLong()
+        val runtime = (functionToRuntime.values.max()).toLong()
 
-//        randomSearchFunctions.map { (functionName, function) ->
-//            val results = functionRunner(repetitions, functionName) {
-//                val initialSolution = Solution()
-//                function(
-//                    initialSolution,
-//                    initialSolution,
-//                    System.currentTimeMillis(),
-//                    runtime,
-//                    1,
-//                    1
-//                )
-//            }
-//            fileWriter.writeCostResultsToFile(results)
-//        }
+        randomSearchFunctions.map { (functionName, function) ->
+            val results = functionRunner(repetitions, functionName) {
+                val initialSolution = Solution()
+                function(
+                    initialSolution,
+                    initialSolution,
+                    System.currentTimeMillis(),
+                    runtime,
+                    1,
+                    1
+                )
+            }
+            fileWriter.writeCostResultsToFile(results)
+        }
 
         heuristicFunction.map { (functionName, function) ->
             val results = functionRunner(repetitions, functionName) {
@@ -103,41 +87,7 @@ class Benchmarking(
         fileWriter.writeCostResultsToFile(tabuSearchResults)
     }
 
-    fun performBurnoutBenchmark(repetitions: Long) {
-        val functionToRuntime = localSearchHistoryFunctions.map { (functionName, function) ->
-            val initialSolution = Solution()
-            val results = costOverTimeBenchmark(repetitions, functionName) {
-                function(
-                    initialSolution,
-                    mutableListOf(BestSolution(initialSolution, 0, 1, 1)),
-                    System.currentTimeMillis(),
-                    1,
-                    1
-                )
-            }
-            fileWriter.writeBurnoutResultsToFile(results)
-            functionName to results.totalTimeMilliseconds
-        }.toMap()
-
-        val runtime = functionToRuntime.values.max() / repetitions
-
-        randomSearchHistoryFunctions.forEach { (functionName, function) ->
-            val results = costOverTimeBenchmark(repetitions, functionName) {
-                val initialSolution = Solution()
-                function(
-                    initialSolution,
-                    mutableListOf(BestSolution(initialSolution, 0, 1, 1)),
-                    System.currentTimeMillis(),
-                    runtime,
-                    1,
-                    1
-                )
-            }
-            fileWriter.writeBurnoutResultsToFile(results)
-        }
-    }
-
-    fun performInitialVsFinalBenchmark(repetitions: Long) = runBlocking {
+    suspend fun performInitialVsFinalBenchmark(repetitions: Long) = withContext(Dispatchers.IO) {
         localSearchFunctions.map { (functionName, function) ->
             val results = (0 until repetitions).map {
                 async {
@@ -184,17 +134,5 @@ class Benchmarking(
                 }.toSet()
             )
         }
-    }
-
-    private fun costOverTimeBenchmark(
-        repetitions: Long,
-        functionName: String,
-        function: () -> List<BestSolution>
-    ): CostOverTimeBenchmarkResult {
-        val results = mutableSetOf<List<BestSolution>>()
-        val startTime = System.currentTimeMillis()
-        for (i in 0 until repetitions) results.add(function())
-        val endTime = System.currentTimeMillis()
-        return CostOverTimeBenchmarkResult(functionName, repetitions, endTime - startTime, results)
     }
 }

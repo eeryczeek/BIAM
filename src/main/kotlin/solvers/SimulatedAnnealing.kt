@@ -6,14 +6,15 @@ import org.example.Solution
 import kotlin.math.pow
 import kotlin.random.Random
 
-fun simulatedAnnealing(
+tailrec fun simulatedAnnealing(
     solution: Solution,
     bestSolution: Solution,
     startTime: Long = System.currentTimeMillis(),
     iterations: Long = 1L,
     evaluations: Long = 1L,
-    temperature: Double = 1.0,
-    coolingRate: Double = 0.9993.pow(Problem.n)
+    temperature: Double = 0.999.pow(Problem.n),
+    coolingRate: Double = 0.999.pow(Problem.n),
+    coolingRateCountdown: Int = 4 * Problem.n,
 ): BestSolution {
     val neighbourhood = solution.getNeighbourhood()
     val index =
@@ -26,8 +27,9 @@ fun simulatedAnnealing(
             startTime = startTime,
             iterations = iterations + 1,
             evaluations = evaluations + index + 1,
-            temperature = temperature * coolingRate,
-            coolingRate = coolingRate
+            temperature = if (coolingRateCountdown == 0) temperature * coolingRate else temperature,
+            coolingRate = coolingRate,
+            coolingRateCountdown = if (coolingRateCountdown == 0) Problem.n else coolingRateCountdown - 1
         )
     }
     return when {
@@ -35,7 +37,7 @@ fun simulatedAnnealing(
             bestSolution,
             System.currentTimeMillis() - startTime,
             iterations,
-            evaluations
+            evaluations + neighbourhood.count()
         )
 
         else -> simulatedAnnealing(
@@ -44,8 +46,9 @@ fun simulatedAnnealing(
             startTime = startTime,
             iterations = iterations + 1,
             evaluations = evaluations + neighbourhood.count() + 1,
-            temperature = temperature * coolingRate,
-            coolingRate = coolingRate
+            temperature = if (coolingRateCountdown == 0) temperature * coolingRate else temperature,
+            coolingRate = coolingRate,
+            coolingRateCountdown = if (coolingRateCountdown == 0) Problem.n else coolingRateCountdown - 1
         )
     }
 }

@@ -1,9 +1,5 @@
 package org.example
 
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -26,24 +22,20 @@ class Solution(
         }.toLong()
     }
 
-    suspend fun getDeltaCost(i: Int, j: Int): Long = coroutineScope {
-        val n = Problem.n
-
-        (0 until n)
-            .filter { k -> k != i && k != j }
-            .map { k ->
-                async {
-                    val delta1 =
-                        (Problem.flowMatrix[permutation[i]][permutation[k]] - Problem.flowMatrix[permutation[j]][permutation[k]]) *
-                                (Problem.distanceMatrix[j][k] - Problem.distanceMatrix[i][k])
-                    val delta2 =
-                        (Problem.flowMatrix[permutation[k]][permutation[i]] - Problem.flowMatrix[permutation[k]][permutation[j]]) *
-                                (Problem.distanceMatrix[k][j] - Problem.distanceMatrix[k][i])
-                    delta1 + delta2
-                }
+    fun getDeltaCost(i: Int, j: Int): Long {
+        var deltaCost = 0L
+        for (k in 0 until Problem.n) {
+            if (k != i && k != j) {
+                val delta1 =
+                    (Problem.flowMatrix[permutation[i]][permutation[k]] - Problem.flowMatrix[permutation[j]][permutation[k]]) *
+                        (Problem.distanceMatrix[j][k] - Problem.distanceMatrix[i][k])
+                val delta2 =
+                    (Problem.flowMatrix[permutation[k]][permutation[i]] - Problem.flowMatrix[permutation[k]][permutation[j]]) *
+                        (Problem.distanceMatrix[k][j] - Problem.distanceMatrix[k][i])
+                deltaCost += delta1 + delta2
             }
-            .awaitAll()
-            .sum().toLong()
+        }
+        return deltaCost
     }
 
     fun getNeighbourhood(ordered: Boolean = false): Sequence<Solution> {
@@ -62,17 +54,20 @@ class Solution(
             innerPermutation.filter { it > i }.asSequence().map { j ->
                 val newPermutation = permutation.clone()
                 newPermutation[i] = permutation[j].also { newPermutation[j] = permutation[i] }
-                runBlocking { Solution(newPermutation, cost + getDeltaCost(i, j)) }
+                Solution(newPermutation, cost + getDeltaCost(i, j))
             }
         }
     }
 
     fun getNeighbourhoodWithMoves(): Sequence<SolutionWithMove> {
-        return permutation.indices.asSequence().flatMap { i ->
-            permutation.indices.filter { it > i }.asSequence().map { j ->
+        val outerPermutation = shuffle(IntArray(Problem.n) { it })
+        val innerPermutation = shuffle(IntArray(Problem.n) { it })
+
+        return outerPermutation.asSequence().flatMap { i ->
+            innerPermutation.filter { it > i }.asSequence().map { j ->
                 val newPermutation = permutation.clone()
                 newPermutation[i] = permutation[j].also { newPermutation[j] = permutation[i] }
-                SolutionWithMove(Pair(i, j), Solution(newPermutation, cost + runBlocking { getDeltaCost(i, j) }))
+                SolutionWithMove(Pair(i, j), Solution(newPermutation, cost + getDeltaCost(i, j)))
             }
         }
     }
