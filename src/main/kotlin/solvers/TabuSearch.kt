@@ -1,52 +1,53 @@
-// package org.example.solvers
-//
-// import org.example.BestSolution
-// import org.example.Solution
-// import java.util.LinkedList
-//
-// tailrec fun tabuSearch(
-//    current: Solution,
-//    best: Solution = current,
-//    tabuList: LinkedList<Int> = LinkedList(),
-//    maxIterations: Int = 1000,
-//    tabuTenure: Int = 10,
-//    iteration: Int = 0,
-//    evaluations: Long = 0L,
-//    startTime: Long = System.currentTimeMillis()
-// ): BestSolution {
-//    if (iteration >= maxIterations) {
-//        return BestSolution(best, System.currentTimeMillis() - startTime, iteration.toLong(), evaluations)
-//    }
-//
-//    val neighborhood = current.getNeighbourhood()
-//    val next = neighborhood
-//        .filter { it.hashCode() !in tabuList || it.cost < best.cost }
-//        .minByOrNull { it.cost }
-//
-//    if (next == null) {
-//        return BestSolution(
-//            best,
-//            System.currentTimeMillis() - startTime,
-//            iteration.toLong(),
-//            evaluations + neighborhood.size
-//        )
-//    }
-//
-//    val updatedTabuList = LinkedList(tabuList).apply {
-//        add(next.hashCode())
-//        if (size > tabuTenure) removeFirst()
-//    }
-//
-//    val newBest = if (next.cost < best.cost) next else best
-//
-//    return tabuSearch(
-//        next,
-//        newBest,
-//        updatedTabuList,
-//        maxIterations,
-//        tabuTenure,
-//        iteration + 1,
-//        evaluations + neighborhood.size,
-//        startTime
-//    )
-// }
+package org.example.solvers
+
+import org.example.BestSolution
+import org.example.Problem
+import org.example.Solution
+
+tailrec fun tabuSearch(
+    solution: Solution,
+    bestSolution: Solution,
+    startTime: Long = System.currentTimeMillis(),
+    iterations: Long = 1L,
+    evaluations: Long = 1L,
+    tabuMatrix: Array<Array<Int>> = Array(solution.permutation.size) { Array(solution.permutation.size) { 0 } },
+    noImprovement: Int = 0,
+): BestSolution {
+    val neighborhood = solution.getNeighbourhoodWithMoves()
+    val solutionWithMove = neighborhood.sortedBy { it.solution.cost }.firstOrNull {
+        tabuMatrix[it.move.first][it.move.second] == 0 || it.solution.cost < bestSolution.cost
+    } ?: return BestSolution(
+        bestSolution,
+        System.currentTimeMillis() - startTime,
+        iterations,
+        evaluations + neighborhood.count()
+    )
+    tabuMatrix.forEachIndexed { i, matrix ->
+        matrix.forEachIndexed { j, _ ->
+            if (tabuMatrix[i][j] > 0) {
+                tabuMatrix[i][j]--
+            }
+        }
+    }
+    tabuMatrix[solutionWithMove.move.first][solutionWithMove.move.second] = Problem.n / 4
+
+    return when {
+        noImprovement >= 2 * Problem.n ->
+            BestSolution(
+                bestSolution,
+                System.currentTimeMillis() - startTime,
+                iterations,
+                evaluations + neighborhood.count()
+            )
+
+        else -> tabuSearch(
+            solution = solutionWithMove.solution,
+            bestSolution = if (solutionWithMove.solution.cost < bestSolution.cost) solutionWithMove.solution else bestSolution,
+            startTime = startTime,
+            iterations = iterations + 1,
+            evaluations = evaluations + neighborhood.count(),
+            tabuMatrix = tabuMatrix,
+            noImprovement = if (solutionWithMove.solution.cost < bestSolution.cost) 0 else noImprovement + 1,
+        )
+    }
+}

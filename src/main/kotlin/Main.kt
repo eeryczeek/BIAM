@@ -11,8 +11,8 @@ suspend fun main() {
         "input/tai50b",
         "input/tai60b",
         "input/tai80b",
-        "input/tai100b",
-        "input/tai150b",
+//        "input/tai100b",
+//        "input/tai150b",
     )
     val benchmarking = Benchmarking()
     FileWriter().clear()

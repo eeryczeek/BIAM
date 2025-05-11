@@ -35,10 +35,10 @@ class Solution(
                 async {
                     val delta1 =
                         (Problem.flowMatrix[permutation[i]][permutation[k]] - Problem.flowMatrix[permutation[j]][permutation[k]]) *
-                            (Problem.distanceMatrix[j][k] - Problem.distanceMatrix[i][k])
+                                (Problem.distanceMatrix[j][k] - Problem.distanceMatrix[i][k])
                     val delta2 =
                         (Problem.flowMatrix[permutation[k]][permutation[i]] - Problem.flowMatrix[permutation[k]][permutation[j]]) *
-                            (Problem.distanceMatrix[k][j] - Problem.distanceMatrix[k][i])
+                                (Problem.distanceMatrix[k][j] - Problem.distanceMatrix[k][i])
                     delta1 + delta2
                 }
             }
@@ -66,6 +66,16 @@ class Solution(
             }
         }
     }
+
+    fun getNeighbourhoodWithMoves(): Sequence<SolutionWithMove> {
+        return permutation.indices.asSequence().flatMap { i ->
+            permutation.indices.filter { it > i }.asSequence().map { j ->
+                val newPermutation = permutation.clone()
+                newPermutation[i] = permutation[j].also { newPermutation[j] = permutation[i] }
+                SolutionWithMove(Pair(i, j), Solution(newPermutation, cost + runBlocking { getDeltaCost(i, j) }))
+            }
+        }
+    }
 }
 
 fun shuffle(array: IntArray): IntArray {
@@ -89,3 +99,8 @@ data class BestSolution(
         return json.encodeToString(this)
     }
 }
+
+data class SolutionWithMove(
+    val move: Pair<Int, Int>,
+    val solution: Solution
+)

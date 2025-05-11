@@ -1,5 +1,10 @@
 package org.example.benchmarking
 
+import benchmarking.BestCost
+import benchmarking.CostOverTimeBenchmarkResult
+import benchmarking.GeneralResult
+import benchmarking.InitialVsFinal
+import benchmarking.InitialVsFinalResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -9,9 +14,6 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 import org.example.BestSolution
 import org.example.FileWriter
 import org.example.OptimalSolution
@@ -27,6 +29,7 @@ import org.example.solvers.randomSearchHistory
 import org.example.solvers.randomWalk
 import org.example.solvers.randomWalkHistory
 import org.example.solvers.simulatedAnnealing
+import org.example.solvers.tabuSearch
 
 class Benchmarking(
     private val fileWriter: FileWriter = FileWriter()
@@ -63,22 +66,22 @@ class Benchmarking(
             functionName to results.bestSolutions.map { it.time }.average()
         }.toMap()
 
-        val runtime = (functionToRuntime.values.max() / repetitions).toLong()
+//        val runtime = (functionToRuntime.values.max() / repetitions).toLong()
 
-        randomSearchFunctions.map { (functionName, function) ->
-            val results = functionRunner(repetitions, functionName) {
-                val initialSolution = Solution()
-                function(
-                    initialSolution,
-                    initialSolution,
-                    System.currentTimeMillis(),
-                    runtime,
-                    1,
-                    1
-                )
-            }
-            fileWriter.writeCostResultsToFile(results)
-        }
+//        randomSearchFunctions.map { (functionName, function) ->
+//            val results = functionRunner(repetitions, functionName) {
+//                val initialSolution = Solution()
+//                function(
+//                    initialSolution,
+//                    initialSolution,
+//                    System.currentTimeMillis(),
+//                    runtime,
+//                    1,
+//                    1
+//                )
+//            }
+//            fileWriter.writeCostResultsToFile(results)
+//        }
 
         heuristicFunction.map { (functionName, function) ->
             val results = functionRunner(repetitions, functionName) {
@@ -86,11 +89,18 @@ class Benchmarking(
             }
             fileWriter.writeCostResultsToFile(results)
         }
-        val results = functionRunner(repetitions, "simulatedAnnealing") {
+
+        val simulatedAnnealingResults = functionRunner(repetitions, "simulatedAnnealing") {
             val initialSolution = Solution()
-            simulatedAnnealing(initialSolution)
+            simulatedAnnealing(initialSolution, initialSolution, System.currentTimeMillis(), 1, 1)
         }
-        fileWriter.writeCostResultsToFile(results)
+        fileWriter.writeCostResultsToFile(simulatedAnnealingResults)
+
+        val tabuSearchResults = functionRunner(repetitions, "tabuSearch") {
+            val initialSolution = Solution()
+            tabuSearch(initialSolution, initialSolution, System.currentTimeMillis(), 1, 1)
+        }
+        fileWriter.writeCostResultsToFile(tabuSearchResults)
     }
 
     fun performBurnoutBenchmark(repetitions: Long) {
@@ -144,7 +154,7 @@ class Benchmarking(
         repetitions: Long,
         functionName: String,
         function: () -> BestSolution
-    ): BenchmarkResult = withContext(Dispatchers.IO) {
+    ): GeneralResult = withContext(Dispatchers.IO) {
         val loadingJob = launch {
             val spinner = listOf("\\", "|", "/", "-")
             var index = 0
@@ -160,7 +170,19 @@ class Benchmarking(
         loadingJob.cancelAndJoin()
         return@withContext when {
             results.sumOf { it.time } < 100L -> functionRunner(repetitions * 10L, functionName, function)
-            else -> BenchmarkResult(functionName, results)
+            else -> GeneralResult(
+                functionName,
+                Problem.n.toLong(),
+                OptimalSolution.solution,
+                results.map {
+                    BestCost(
+                        it.solution.cost,
+                        it.time,
+                        it.iterations,
+                        it.evaluations
+                    )
+                }.toSet()
+            )
         }
     }
 
@@ -174,51 +196,5 @@ class Benchmarking(
         for (i in 0 until repetitions) results.add(function())
         val endTime = System.currentTimeMillis()
         return CostOverTimeBenchmarkResult(functionName, repetitions, endTime - startTime, results)
-    }
-}
-
-@Serializable
-data class InitialVsFinalResult(
-    val functionName: String,
-    val initialVsFinals: Set<InitialVsFinal>,
-    val instanceSize: Long = Problem.n.toLong(),
-) {
-    fun toJson(): String {
-        val json = Json { encodeDefaults = true }
-        return json.encodeToString(this)
-    }
-}
-
-@Serializable
-data class InitialVsFinal(
-    val initialSolution: Solution,
-    val finalSolution: Solution,
-)
-
-@Serializable
-data class CostOverTimeBenchmarkResult(
-    val functionName: String,
-    val totalRuns: Long,
-    val totalTimeMilliseconds: Long,
-    val bestSolutions: Set<List<BestSolution>>,
-    val instanceSize: Long = Problem.n.toLong(),
-    val optimalSolution: Solution? = OptimalSolution.solution
-) {
-    fun toJson(): String {
-        val json = Json { encodeDefaults = true }
-        return json.encodeToString(this)
-    }
-}
-
-@Serializable
-data class BenchmarkResult(
-    val functionName: String,
-    val bestSolutions: Set<BestSolution>,
-    val instanceSize: Long = Problem.n.toLong(),
-    val optimalSolution: Solution? = OptimalSolution.solution
-) {
-    fun toJson(): String {
-        val json = Json { encodeDefaults = true }
-        return json.encodeToString(this)
     }
 }

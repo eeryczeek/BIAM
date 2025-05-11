@@ -8,8 +8,8 @@ tailrec fun randomSearch(
     bestSolution: Solution,
     startTime: Long,
     maxTime: Long,
-    iterations: Long = 0,
-    evaluations: Long = 0
+    iterations: Long = 1L,
+    evaluations: Long = 1L
 ): BestSolution {
     if (System.currentTimeMillis() - startTime >= maxTime) {
         return BestSolution(

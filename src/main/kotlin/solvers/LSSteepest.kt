@@ -6,16 +6,16 @@ import org.example.Solution
 tailrec fun localSearchSteepest(
     solution: Solution,
     startTime: Long = System.currentTimeMillis(),
-    iterations: Long = 0L,
-    evaluations: Long = 0L
+    iterations: Long = 1L,
+    evaluations: Long = 1L
 ): BestSolution {
     val neighbourhood = solution.getNeighbourhood()
     neighbourhood.minByOrNull { it.cost }?.takeIf { it.cost < solution.cost }?.let { bestNeighbour ->
         return localSearchSteepest(
-            bestNeighbour,
-            startTime,
-            iterations + 1,
-            evaluations + neighbourhood.count()
+            solution = bestNeighbour,
+            startTime = startTime,
+            iterations = iterations + 1,
+            evaluations = evaluations + neighbourhood.count()
         )
     }
     return BestSolution(
@@ -30,8 +30,8 @@ fun localSearchSteepestHistory(
     solution: Solution,
     bestSolutions: MutableList<BestSolution>,
     startTime: Long = System.currentTimeMillis(),
-    iterations: Long = 0L,
-    evaluations: Long = 0L
+    iterations: Long = 1L,
+    evaluations: Long = 1L
 ): List<BestSolution> {
     val neighbourhood = solution.getNeighbourhood()
     val newEvaluations = evaluations + neighbourhood.count()

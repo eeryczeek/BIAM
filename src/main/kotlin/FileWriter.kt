@@ -1,8 +1,8 @@
 package org.example
 
-import org.example.benchmarking.BenchmarkResult
-import org.example.benchmarking.CostOverTimeBenchmarkResult
-import org.example.benchmarking.InitialVsFinalResult
+import benchmarking.CostOverTimeBenchmarkResult
+import benchmarking.GeneralResult
+import benchmarking.InitialVsFinalResult
 import java.io.File
 
 class FileWriter {
@@ -12,7 +12,7 @@ class FileWriter {
 //        File("results/initial-final.txt").writeText("")
     }
 
-    fun writeCostResultsToFile(benchmarkResults: BenchmarkResult) {
+    fun writeCostResultsToFile(benchmarkResults: GeneralResult) {
         val file = File("results/cost-time-results.txt")
         file.appendText("${benchmarkResults.toJson()}${System.lineSeparator()}")
     }

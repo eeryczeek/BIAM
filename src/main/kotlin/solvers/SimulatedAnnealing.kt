@@ -1,64 +1,55 @@
 package org.example.solvers
 
 import org.example.BestSolution
+import org.example.Problem
 import org.example.Solution
-import kotlin.math.*
+import kotlin.math.pow
 import kotlin.random.Random
 
 fun simulatedAnnealing(
-    initial: Solution,
-    alpha: Double = 0.9,
-    p: Int = 10,
-    acceptanceThreshold: Double = 0.01
+    solution: Solution,
+    bestSolution: Solution,
+    startTime: Long = System.currentTimeMillis(),
+    iterations: Long = 1L,
+    evaluations: Long = 1L,
+    temperature: Double = 1.0,
+    coolingRate: Double = 0.9993.pow(Problem.n)
 ): BestSolution {
-    val neighbourhoodSample = initial.getNeighbourhood().take(100).toList()
-    if (neighbourhoodSample.isEmpty()) return BestSolution(initial, 0L, 0L)
-
-    val avgDelta = neighbourhoodSample
-        .map { abs(it.cost - initial.cost).toDouble() }
-        .average()
-        .coerceAtLeast(1.0)
-
-    var temperature = -avgDelta / ln(0.95)
-    val minTemperature = -avgDelta / ln(acceptanceThreshold)
-
-    var current = initial
-    var best = initial
-    var iterations = 0L
-    var evaluations = 0L
-    var noImprovement = 0
-
-    while (temperature > minTemperature || noImprovement < p * 10) {
-        val neighbours = current.getNeighbourhood()
-        val L = max(10, neighbours.count()) // L depends on instance size
-        val neighboursList = neighbours.take(L).toList()
-        if (neighboursList.isEmpty()) break
-
-        repeat(L) {
-            val index = neighboursList.indexOfFirst { it.cost < current.cost }
-            val improving = neighboursList.getOrNull(index)
-            val candidate = improving ?: neighboursList.random()
-            evaluations++
-
-            val delta = candidate.cost - current.cost
-            val prob = if (delta < 0) 1.0 else exp(-delta.toDouble() / temperature)
-
-            if (delta < 0 || Random.nextDouble() < prob) {
-                current = candidate
-                if (current.cost < best.cost) {
-                    best = current
-                    noImprovement = 0
-                } else {
-                    noImprovement++
-                }
-            } else {
-                noImprovement++
-            }
-            iterations++
-        }
-
-        temperature *= alpha
+    val neighbourhood = solution.getNeighbourhood()
+    val index =
+        neighbourhood.indexOfFirst { Random.nextDouble() < getProbability(it.cost - solution.cost, temperature) }
+    if (index != -1) {
+        val newSolution = neighbourhood.elementAt(index)
+        return simulatedAnnealing(
+            solution = newSolution,
+            bestSolution = if (newSolution.cost < bestSolution.cost) newSolution else bestSolution,
+            startTime = startTime,
+            iterations = iterations + 1,
+            evaluations = evaluations + index + 1,
+            temperature = temperature * coolingRate,
+            coolingRate = coolingRate
+        )
     }
+    return when {
+        temperature < 0.001 -> BestSolution(
+            bestSolution,
+            System.currentTimeMillis() - startTime,
+            iterations,
+            evaluations
+        )
 
-    return BestSolution(best, iterations, evaluations)
+        else -> simulatedAnnealing(
+            solution = solution,
+            bestSolution = bestSolution,
+            startTime = startTime,
+            iterations = iterations + 1,
+            evaluations = evaluations + neighbourhood.count() + 1,
+            temperature = temperature * coolingRate,
+            coolingRate = coolingRate
+        )
+    }
+}
+
+fun getProbability(delta: Long, temperature: Double): Double {
+    return if (delta < 0) 1.0 else temperature
 }
