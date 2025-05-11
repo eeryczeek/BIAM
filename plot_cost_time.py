@@ -2,6 +2,8 @@ import json
 import matplotlib.pyplot as plt
 import numpy as np
 from collections import defaultdict
+import matplotlib.gridspec as gridspec
+from matplotlib.ticker import FixedLocator
 
 FUNCTION_COLORS = {
     "heuristic": "#000000",  # black
@@ -134,9 +136,14 @@ def plot_all_average_measure(
 
     plt.xticks(x, data_by_instance.keys())
     plt.xlabel("Instance Size")
-    if log_scale:
-        plt.yscale("log")
-        plt.ylabel(f"Average {measure} (ms, log scale)")
+    if measure == "time":
+        if log_scale:
+            plt.yscale("log")
+        plt.ylabel("Average time (ms)")
+        ax = plt.gca()
+        yticks = ax.get_yticks()
+        ax.yaxis.set_major_locator(FixedLocator(yticks))
+        ax.set_yticklabels([f"{int(label)} ms" for label in yticks])
     else:
         plt.ylabel(f"Average {measure}")
     plt.legend()
@@ -146,121 +153,119 @@ def plot_all_average_measure(
     plt.close()
 
 
-def scaled_distance_vs(
-    data_by_instance, optimal_solutions, measure="time", output_file="fitness-vs"
-):
-    """Plots a scatter plot of solution fitness vs. a given measure (e.g., time)."""
+def scaled_distance_vs(data_by_instance, optimal_solutions, measure="time", output_file="fitness-vs"):
     instance_sizes = list(data_by_instance.keys())
-    fig, axes = plt.subplots(2, 4, figsize=(24, 12))
-    axes = axes.flatten()
+    fig = plt.figure(figsize=(24, 14))
+    gs = gridspec.GridSpec(3, 4, height_ratios=[6, 6, 1])
+    axes = [fig.add_subplot(gs[i // 4, i % 4]) for i in range(8)]
+
+    all_handles = {}
 
     for idx, instance_size in enumerate(instance_sizes):
-        if idx >= len(axes):
+        if idx >= 8:
             break
-
         ax = axes[idx]
         functions_data = data_by_instance[instance_size]
-
         if instance_size not in optimal_solutions:
             continue
-
         optimal_cost = optimal_solutions[instance_size]["cost"]
 
         for function_name, runs_list in functions_data.items():
             measures = []
             distances = []
-
             for runs in runs_list:
                 for run in runs:
                     measure_value = run[measure]
                     solution_cost = run["cost"]
-
-                    distance = scaled_distance(solution_cost, optimal_cost)
-
+                    distance = abs(solution_cost - optimal_cost) / optimal_cost
                     measures.append(measure_value)
                     distances.append(distance)
 
-            ax.scatter(
+            sc = ax.scatter(
                 np.array(measures) + np.random.uniform(-0.1, 0.1, size=len(measures)),
-                np.array(distances)
-                + np.random.uniform(-0.01, 0.01, size=len(distances)),
+                np.array(distances) + np.random.uniform(-0.01, 0.01, size=len(distances)),
                 label=function_name,
                 alpha=0.7,
                 color=FUNCTION_COLORS.get(function_name, "black"),
             )
+            all_handles[function_name] = sc
 
         ax.set_title(f"Instance Size: {instance_size}")
         ax.set_xlabel(measure.capitalize())
         ax.set_ylabel("Scaled Distance to Optimal Solution")
-        ax.legend()
         ax.grid()
 
-    for idx in range(len(instance_sizes), len(axes)):
+    for idx in range(len(instance_sizes), 8):
         fig.delaxes(axes[idx])
+
+    ax_legend = fig.add_subplot(gs[2, :])
+    ax_legend.axis("off")
+    handles = [all_handles[name] for name in sorted(all_handles)]
+    labels = sorted(all_handles)
+    ax_legend.legend(handles, labels, loc="center", ncol=len(handles), fontsize=20)
 
     plt.tight_layout()
     plt.savefig(f"plots/{output_file}-{measure}.png")
     plt.close()
 
 
-def distance_vs_only_search(
-    data_by_instance, optimal_solutions, measure="time", output_file="fitness-vs"
-):
-    """Plots a scatter plot of solution fitness vs. a given measure (e.g., time)."""
+def distance_vs_only_search(data_by_instance, optimal_solutions, measure="time", output_file="fitness-vs"):
     instance_sizes = list(data_by_instance.keys())
-    fig, axes = plt.subplots(2, 4, figsize=(24, 12))
-    axes = axes.flatten()
+    fig = plt.figure(figsize=(24, 14))
+    gs = gridspec.GridSpec(3, 4, height_ratios=[6, 6, 1])
+    axes = [fig.add_subplot(gs[i // 4, i % 4]) for i in range(8)]
+
+    all_handles = {}
 
     for idx, instance_size in enumerate(instance_sizes):
-        if idx >= len(axes):
+        if idx >= 8:
             break
-
         ax = axes[idx]
         functions_data = data_by_instance[instance_size]
-
         if instance_size not in optimal_solutions:
             continue
-
         optimal_cost = optimal_solutions[instance_size]["cost"]
 
         for function_name, runs_list in functions_data.items():
             if function_name in ["randomWalk", "randomSearch", "heuristic"]:
                 continue
+
             measures = []
             distances = []
-
             for runs in runs_list:
                 for run in runs:
                     measure_value = run[measure]
                     solution_cost = run["cost"]
-
-                    distance = scaled_distance(solution_cost, optimal_cost)
-
+                    distance = abs(solution_cost - optimal_cost) / optimal_cost
                     measures.append(measure_value)
                     distances.append(distance)
 
-            ax.scatter(
+            sc = ax.scatter(
                 np.array(measures) + np.random.uniform(-0.1, 0.1, size=len(measures)),
-                np.array(distances)
-                + np.random.uniform(-0.01, 0.01, size=len(distances)),
+                np.array(distances) + np.random.uniform(-0.01, 0.01, size=len(distances)),
                 label=function_name,
                 alpha=0.7,
                 color=FUNCTION_COLORS.get(function_name, "black"),
             )
+            all_handles[function_name] = sc
 
         ax.set_title(f"Instance Size: {instance_size}")
         ax.set_xlabel(measure.capitalize())
         ax.set_ylabel("Scaled Distance to Optimal Solution")
-        ax.legend()
         ax.grid()
 
-    for idx in range(len(instance_sizes), len(axes)):
+    for idx in range(len(instance_sizes), 8):
         fig.delaxes(axes[idx])
+
+    ax_legend = fig.add_subplot(gs[2, :])
+    ax_legend.axis("off")
+    handles = [all_handles[name] for name in sorted(all_handles)]
+    labels = sorted(all_handles)
+    ax_legend.legend(handles, labels, loc="center", ncol=len(handles), fontsize=20)
 
     plt.tight_layout()
     plt.savefig(f"plots/{output_file}-{measure}-search.png")
     plt.close()
-
 
 if __name__ == "__main__":
     cost_time_results = load_results("results/cost-time-results.txt")
