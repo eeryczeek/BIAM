@@ -4,13 +4,13 @@ import numpy as np
 from collections import defaultdict
 
 FUNCTION_COLORS = {
-    "heuristic": "black",
-    "randomWalk": "blue",
-    "randomSearch": "green",
-    "localSearchGreedy": "orange",
-    "localSearchSteepest": "purple",
-    "simulatedAnnealing": "pink",
-    "tabuSearch": "turquoise",
+    "heuristic": "#000000",  # black
+    "randomWalk": "#ff0000",  # red
+    "randomSearch": "#0000ff",  # blue
+    "localSearchGreedy": "#ffa500",  # orange
+    "simulatedAnnealing": "#008000",  # green
+    "localSearchSteepest": "#800080",  # purple
+    "tabuSearch": "#00ced1",  # dark turquoise
 }
 plt.rcParams.update(
     {
